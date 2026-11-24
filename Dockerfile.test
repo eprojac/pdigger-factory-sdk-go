@@ -1,0 +1,25 @@
+# The unit test image of make test and CI: the pinned Go toolchain and the SDK, compiled at build time, so that
+#
+#   docker build -t pdigger-factory-sdk-go-test -f Dockerfile.test .
+#   docker run --rm --network none pdigger-factory-sdk-go-test
+#
+# runs gofmt, go vet, the tests with the race detector and 100 % statement coverage, the golden tests, the examples
+# and the picture check (scripts/test.sh) with no network. The SDK has no dependencies outside the standard library.
+FROM golang:1.27.4-bookworm
+
+ENV GOTOOLCHAIN=local \
+    CGO_ENABLED=1
+
+WORKDIR /src
+COPY . .
+
+# Compile every package and test binary once, with the flags of scripts/test.sh, so the run reuses the build cache.
+RUN go vet ./... \
+ && go test -race -count=1 -covermode=atomic -coverpkg=./... -run '^$' ./... >/dev/null \
+ && (cd examples && go vet ./... && go test -count=1 -run '^$' ./... >/dev/null) \
+ && (cd tools && go vet ./... && go test -count=1 -run '^$' ./... >/dev/null)
+
+# Nothing is downloaded when the tests run.
+ENV GOPROXY=off
+
+CMD ["sh", "scripts/test.sh"]

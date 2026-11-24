@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 927" width="1000" height="927" role="img" aria-labelledby="t d">
+  <title id="t">Quickstart: follow the camera</title>
+  <desc id="d">Real output of examples/quickstart following a factorytest fake unit whose shared session plays the fixture recording aug28-1270-1300 (video aug28, 21:10.0 to 21:40.0, frames g 6350 to 6500), stopped after the place of stone 2660 at 21:21.8 (g 6409). Highlighted: the move of stone 2660. Drawn by tools/pictures from what the SDK prints.</desc>
+  <style>
+    .bg { fill: #f6f4f0; }
+    .term { fill: #16191d; }
+    .h { font: 700 17px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #16181b; }
+    .k { font: 600 11px ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: .1em; fill: #595e65; }
+    .cap { font: 400 13px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #33373c; }
+    .cmd, .out, .mark, .skip { font: 500 13.5px ui-monospace, 'SF Mono', Menlo, monospace; white-space: pre; }
+    .cmd { fill: #9da3aa; } .out { fill: #e9e6e1; } .mark { fill: #ff7a52; font-weight: 700; } .skip { fill: #7d838a; font-style: italic; }
+    .dot { fill: #e4502a; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0d0e10; } .term { fill: #1b1e22; } .h { fill: #ece9e4; } .k { fill: #a2a7ad; } .cap { fill: #cbc7c0; }
+    }
+  </style>
+  <rect class="bg" width="1000" height="927" rx="18"/>
+  <text class="k" x="28" y="36">PDIGGER FACTORY SDK · GO</text>
+  <text class="h" x="28" y="58">Quickstart: follow the camera</text>
+  <rect class="term" x="28" y="76" width="944" height="750" rx="12"/>
+  <circle class="dot" cx="952" cy="90" r="4" opacity="1.00"/>
+  <circle class="dot" cx="938" cy="90" r="4" opacity="0.70"/>
+  <circle class="dot" cx="924" cy="90" r="4" opacity="0.40"/>
+  <text class="cmd" x="48" y="109">examples $ PDIGGER_FACTORY_URL=http://factory-orin.local:8120 go run ./quickstart</text>
+  <text class="out" x="48" y="130">21:10.0 stone 2629 gets its final shape</text>
+  <text class="out" x="48" y="151">21:10.2 stone 2620 gets its final shape</text>
+  <text class="out" x="48" y="172">21:10.8 stone 2611 gets its final shape</text>
+  <text class="skip" x="48" y="193">… 45 lines left out …</text>
+  <text class="out" x="48" y="214">21:13.4 stone 2656 is confirmed</text>
+  <text class="out" x="48" y="235">21:13.4 stone 2657 is confirmed</text>
+  <text class="out" x="48" y="256">21:13.4 stone 2659 is confirmed</text>
+  <text class="mark" x="48" y="277">21:13.4 stone 2660 appears</text>
+  <text class="out" x="48" y="298">21:13.4 stone 2661 appears</text>
+  <text class="out" x="48" y="319">21:13.4 stone 2662 appears</text>
+  <text class="out" x="48" y="340">21:13.4 stone 2592 is removed (outside the board)</text>
+  <text class="out" x="48" y="361">21:13.4 stone 2594 is removed (outside the board)</text>
+  <text class="out" x="48" y="382">21:13.4 stone 2632 is removed (outside the board)</text>
+  <text class="mark" x="48" y="403">21:13.6 stone 2660 is confirmed</text>
+  <text class="out" x="48" y="424">21:13.6 stone 2661 is confirmed</text>
+  <text class="out" x="48" y="445">21:13.6 stone 2662 is confirmed</text>
+  <text class="out" x="48" y="466">21:13.6 stone 2663 appears</text>
+  <text class="skip" x="48" y="487">… 58 lines left out …</text>
+  <text class="out" x="48" y="508">21:17.4 stone 2675 appears</text>
+  <text class="out" x="48" y="529">21:17.6 Right hand pushes stone 2649</text>
+  <text class="out" x="48" y="550">21:17.6 Left hand pushes stone 2664</text>
+  <text class="mark" x="48" y="571">21:17.8 Right hand lifts stone 2660</text>
+  <text class="mark" x="48" y="592">21:17.8 Right hand tips stone 2660 up on its edge</text>
+  <text class="mark" x="48" y="613">21:18.0 Right hand carries stone 2660</text>
+  <text class="out" x="48" y="634">21:18.0 Left hand pushes stone 2640</text>
+  <text class="out" x="48" y="655">21:18.2 Both hands push stone 2640</text>
+  <text class="out" x="48" y="676">21:18.2 stone 2676 appears</text>
+  <text class="skip" x="48" y="697">… 57 lines left out …</text>
+  <text class="out" x="48" y="718">21:21.8 stone 2706 appears</text>
+  <text class="out" x="48" y="739">21:21.8 stone 2707 appears</text>
+  <text class="out" x="48" y="760">21:21.8 stone 2638 is removed (outside the board)</text>
+  <text class="mark" x="48" y="781">21:21.8 Right hand places stone 2660</text>
+  <text class="cmd" x="48" y="802">^C</text>
+  <text class="cap" x="28" y="852">Real output of examples/quickstart following a factorytest fake unit whose shared session plays the fixture</text>
+  <text class="cap" x="28" y="871">recording aug28-1270-1300 (video aug28, 21:10.0 to 21:40.0, frames g 6350 to 6500), stopped after the place of stone</text>
+  <text class="cap" x="28" y="890">2660 at 21:21.8 (g 6409). Highlighted: the move of stone 2660. Drawn by tools/pictures from what the SDK prints.</text>
+</svg>

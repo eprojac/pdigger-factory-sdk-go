@@ -1,0 +1,11 @@
+# test and coverage output
+cover.out
+*.coverprofile
+*.test
+!Dockerfile.test
+/api-reference/
+# editors and systems
+.DS_Store
+.idea/
+.vscode/
+/recordings/

@@ -1,0 +1,7 @@
+.git
+cover.out
+*.coverprofile
+*.test
+api-reference
+recordings
+**/.DS_Store

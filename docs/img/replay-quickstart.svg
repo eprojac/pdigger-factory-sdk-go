@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1104 1053" width="1104" height="1053" role="img" aria-labelledby="t d">
+  <title id="t">Quickstart: replay a recording</title>
+  <desc id="d">Real output of examples/replay over the fixture recording dry1-0296-0306-full (video dry1, 4:55.2 to 5:05.1, frames g 1480 to 1530, all five layers): the events around the lift and place of stone 643 (5:01.6 to 5:02.8), then the summary of the excerpt. Drawn by tools/pictures from what the SDK prints.</desc>
+  <style>
+    .bg { fill: #f6f4f0; }
+    .term { fill: #16191d; }
+    .h { font: 700 17px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #16181b; }
+    .k { font: 600 11px ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: .1em; fill: #595e65; }
+    .cap { font: 400 13px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #33373c; }
+    .cmd, .out, .mark, .skip { font: 500 13.5px ui-monospace, 'SF Mono', Menlo, monospace; white-space: pre; }
+    .cmd { fill: #9da3aa; } .out { fill: #e9e6e1; } .mark { fill: #ff7a52; font-weight: 700; } .skip { fill: #7d838a; font-style: italic; }
+    .dot { fill: #e4502a; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0d0e10; } .term { fill: #1b1e22; } .h { fill: #ece9e4; } .k { fill: #a2a7ad; } .cap { fill: #cbc7c0; }
+    }
+  </style>
+  <rect class="bg" width="1104" height="1053" rx="18"/>
+  <text class="k" x="28" y="36">PDIGGER FACTORY SDK · GO</text>
+  <text class="h" x="28" y="58">Quickstart: replay a recording</text>
+  <rect class="term" x="28" y="76" width="1048" height="876" rx="12"/>
+  <circle class="dot" cx="1056" cy="90" r="4" opacity="1.00"/>
+  <circle class="dot" cx="1042" cy="90" r="4" opacity="0.70"/>
+  <circle class="dot" cx="1028" cy="90" r="4" opacity="0.40"/>
+  <text class="cmd" x="48" y="109">examples $ go run ./replay ../fixtures/recordings/dry1-0296-0306-full.ndjson.gz</text>
+  <text class="out" x="48" y="130">4:55.6 stone 663 gets its final shape</text>
+  <text class="out" x="48" y="151">4:55.8 stone 683 appears</text>
+  <text class="out" x="48" y="172">4:56.0 stone 683 is confirmed</text>
+  <text class="skip" x="48" y="193">… 7 lines left out …</text>
+  <text class="out" x="48" y="214">4:57.0 Right hand pushes stone 644</text>
+  <text class="out" x="48" y="235">4:57.0 stone 653 gets its final shape</text>
+  <text class="mark" x="48" y="256">4:57.4 stone 643 gets its final shape</text>
+  <text class="out" x="48" y="277">4:57.6 stone 676 gets its final shape</text>
+  <text class="out" x="48" y="298">4:58.0 stone 648 gets its final shape</text>
+  <text class="skip" x="48" y="319">… 14 lines left out …</text>
+  <text class="out" x="48" y="340">5:01.0 Both hands push stone 636</text>
+  <text class="out" x="48" y="361">5:01.2 Left hand pushes stone 630</text>
+  <text class="mark" x="48" y="382">5:01.2 Left hand pushes stone 643</text>
+  <text class="mark" x="48" y="403">5:01.4 Left hand pushes stone 643</text>
+  <text class="mark" x="48" y="424">5:01.6 Right hand lifts stone 643</text>
+  <text class="mark" x="48" y="445">5:01.6 Right hand carries stone 643</text>
+  <text class="out" x="48" y="466">5:02.2 Left hand pushes stone 642</text>
+  <text class="out" x="48" y="487">5:02.4 Left hand pushes stone 636</text>
+  <text class="out" x="48" y="508">5:02.8 Right hand pushes stone 629</text>
+  <text class="out" x="48" y="529">5:02.8 stone 684 appears</text>
+  <text class="mark" x="48" y="550">5:02.8 Right hand places stone 643</text>
+  <text class="out" x="48" y="571">5:03.0 Right hand pushes stone 628</text>
+  <text class="out" x="48" y="592">5:03.0 Right hand pushes stone 629</text>
+  <text class="skip" x="48" y="613">… 3 lines left out …</text>
+  <text class="out" x="48" y="634">5:03.2 Left hand pushes stone 636</text>
+  <text class="out" x="48" y="655">5:03.6 Left hand pushes stone 630</text>
+  <text class="mark" x="48" y="676">5:03.6 stone 643 is removed (a hand emptied its place)</text>
+  <text class="out" x="48" y="697">5:03.8 Right hand pushes stone 637</text>
+  <text class="out" x="48" y="718">5:03.8 Right hand pushes stone 644</text>
+  <text class="out" x="48" y="739">5:04.0 Right hand pushes stone 637</text>
+  <text class="out" x="48" y="760">frames: 51 (with world 51, without 0, revisions 0)</text>
+  <text class="out" x="48" y="781">media: 0:10.0, sessions 1, gaps 0</text>
+  <text class="out" x="48" y="802">stones: last 41, max 42, confirmed 41</text>
+  <text class="out" x="48" y="823">moves: 1 (placed 1, dropped 0, carried away 0, removed 0, interrupted 0, partial 0, carried 1), mean 1.2 s, 1.09 units</text>
+  <text class="out" x="48" y="844">push bursts: 5 (left 1, right 3, both 1), pushes 31</text>
+  <text class="out" x="48" y="865">events: new 2, confirm 1, freeze 13, push 31, lift 1, hinge 0, carry 1, place 1, drop 0, gone 0, delete 1, split 0, other 0</text>
+  <text class="out" x="48" y="886">trays: 1 (arrived 1), stones at arrival 42, added 0 (+0 unclear), removed 0 (+1 unclear), not sure 18</text>
+  <text class="out" x="48" y="907">left hand: free 0:05.4, touch 0:03.0, grasp 0:01.8, hinge 0:00.0, carry 0:00.0</text>
+  <text class="out" x="48" y="928">right hand: free 0:04.0, touch 0:02.6, grasp 0:02.4, hinge 0:00.0, carry 0:01.2</text>
+  <text class="cap" x="28" y="978">Real output of examples/replay over the fixture recording dry1-0296-0306-full (video dry1, 4:55.2 to 5:05.1, frames</text>
+  <text class="cap" x="28" y="997">g 1480 to 1530, all five layers): the events around the lift and place of stone 643 (5:01.6 to 5:02.8), then the</text>
+  <text class="cap" x="28" y="1016">summary of the excerpt. Drawn by tools/pictures from what the SDK prints.</text>
+</svg>

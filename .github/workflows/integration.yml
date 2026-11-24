@@ -1,0 +1,74 @@
+name: Integration
+
+# The opt-in integration tests (TESTING.md), weekly and by hand:
+# - against the fake unit (tools/fakeunit) on the runner, so the read-only checks themselves stay correct;
+# - over the four complete recordings published at https://factory.pdigger.com/developers/data/, compared with
+#   their published summaries.
+# A real unit is checked from a machine on its network, never from CI (TESTING.md).
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  fake-unit:
+    name: read-only checks against the fake unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - name: Start the fake unit with the live camera
+        run: |
+          (cd tools && go build -o "$RUNNER_TEMP/fakeunit" ./fakeunit)
+          cd tools
+          nohup "$RUNNER_TEMP/fakeunit" -addr 127.0.0.1:8120 -live > "$RUNNER_TEMP/fakeunit.log" 2>&1 &
+          for attempt in $(seq 50); do
+            if curl -fsS http://127.0.0.1:8120/api/v2/health > /dev/null; then
+              echo "the fake unit answers (attempt $attempt)"
+              exit 0
+            fi
+            sleep 0.2
+          done
+          cat "$RUNNER_TEMP/fakeunit.log"
+          exit 1
+      - name: Integration tests
+        env:
+          PDIGGER_FACTORY_URL: http://127.0.0.1:8120
+        run: go test -run 'IntegrationUnit' -count=1 -v .
+
+  recordings:
+    name: the complete recordings
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - name: Download the published recordings and their summaries
+        run: |
+          dir="$RUNNER_TEMP/recordings"
+          mkdir -p "$dir"
+          cd "$dir"
+          base=https://factory.pdigger.com/developers/data
+          curl -fsSL "$base/recordings.json" -o recordings.json
+          jq -r '.recordings[] | [.video, .files.world.url, .files.world.sha256, .files.summary.url] | @tsv' recordings.json |
+            while IFS="$(printf '\t')" read -r video world sum summary; do
+              curl -fsSL "$world" -o "$video.world.ndjson.gz"
+              echo "$sum  $video.world.ndjson.gz" | sha256sum -c -
+              curl -fsSL "$summary" -o "$video.summary.json"
+              curl -fsSL "$base/$video.summary.txt" -o "$video.summary.txt"
+            done
+          ls -l
+      - name: Replay them
+        env:
+          PDIGGER_FACTORY_RECORDINGS: ${{ runner.temp }}/recordings
+        run: go test -run 'IntegrationCompleteRecordings' -count=1 -timeout 2h -v .
+

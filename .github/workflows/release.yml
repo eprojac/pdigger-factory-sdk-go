@@ -1,0 +1,64 @@
+name: Release
+
+# A tag v<version> (for example v0.1.0) releases the module: the unit tests again, a GitHub release with the
+# CHANGELOG.md section of that version, then a fetch through proxy.golang.org so that the version is on the proxy
+# and on pkg.go.dev at once. Go modules need no other publishing and no secrets.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: unit tests in Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: make test
+        run: make test
+      - name: The tag is the SDK's version
+        run: |
+          version=$(sed -n 's/^const Version = "\(.*\)"$/\1/p' version.go)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "the tag $GITHUB_REF_NAME is not v$version (version.go)"
+            exit 1
+          fi
+
+  release:
+    name: GitHub release and proxy.golang.org
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '/^## / { p = ($2 == v) } p' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          if [ ! -s "$RUNNER_TEMP/notes.md" ]; then
+            echo "CHANGELOG.md has no section ## $version"
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/notes.md"
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - name: Fetch the module through proxy.golang.org
+        run: |
+          cd "$RUNNER_TEMP"
+          for attempt in 1 2 3 4 5 6; do
+            if GOPROXY=https://proxy.golang.org GOFLAGS=-mod=mod go list -m "github.com/${GITHUB_REPOSITORY}@${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            echo "attempt $attempt: not on the proxy yet"
+            sleep 30
+          done
+          exit 1
