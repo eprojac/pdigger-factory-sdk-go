@@ -17,7 +17,7 @@ jobs:
     name: gofmt, go vet, staticcheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v5
         with:
           go-version: stable
@@ -50,7 +50,7 @@ jobs:
       matrix:
         go: ["1.23.x", "stable"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
@@ -65,7 +65,7 @@ jobs:
     name: unit tests in Docker (make test)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: make test (no network inside the container)
         run: make test
 
@@ -73,7 +73,7 @@ jobs:
     name: API reference
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v5
         with:
           go-version: stable
