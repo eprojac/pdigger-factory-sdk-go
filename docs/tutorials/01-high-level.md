@@ -1,12 +1,19 @@
-# High level: what the hands did
+# Follow hand movements
 
-The interpreter turns the unit's frames into what a person would say happened at the work area: events
-(`1:19.2 Left hand lifts stone 155`), activities (a hand moving one stone, or a burst of pushes), the state of both
-hands, the stones in view, and the trays that pass through. It is the same interpreter for a recording replayed
-offline and for a unit followed live, and all four languages give the same sentences for the same frames.
+<a id="high-level-what-the-hands-did"></a>
 
-This tutorial replays a recording first, so it needs no unit, and then follows one. Its program is
-[examples/tutorialhighlevel/main.go](../../examples/tutorialhighlevel/main.go):
+Follow one worker’s hands through a recording. You’ll read individual events, group them into moves and pushes, then
+trace a single stone. The same interpreter can follow a live session.
+
+From the `examples` directory, run the
+[examples/tutorialhighlevel/main.go](../../examples/tutorialhighlevel/main.go) program.
+
+```sh
+go run ./tutorialhighlevel ../fixtures/recordings/dry1-0018-0153.ndjson.gz 155
+```
+
+<details>
+<summary>Show the complete Go example</summary>
 
 ```go
 // Command tutorialhighlevel is the high-level tutorial (docs/tutorials/01-high-level.md) in one program, offline: a
@@ -122,6 +129,8 @@ func main() {
 	}
 }
 ```
+
+</details>
 
 `OpenReplay` reads the recording's header. Each of its iterators is then one pass over the file, streamed, with an
 interpreter of its own: only the interpreter's state is in memory, so a recording of hours works the same, and

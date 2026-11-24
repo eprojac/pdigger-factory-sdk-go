@@ -1,7 +1,8 @@
 # Streams
 
-The mid level delivers frames as the unit releases them. `client.Streams()` has three streams, each an endless
-`iter.Seq2[StreamItem, error]`:
+Use a frame stream for a camera overlay, a feed of scene geometry or your own frame-by-frame analysis. Choose
+server-sent events for a continuous connection, long-poll for individual HTTP requests, or raw packets for model
+outputs. `client.Streams()` returns `iter.Seq2[StreamItem, error]` iterators.
 
 | Stream | Transport | Items |
 |---|---|---|

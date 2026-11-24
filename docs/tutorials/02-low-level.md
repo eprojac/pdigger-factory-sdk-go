@@ -1,12 +1,19 @@
-# Low level: one call per operation
+# Read a frame through the HTTP API
 
-Under the interpreter, `client.API()` has one method for each of the unit's 32 operations, named after its
-`operationId` (`GetFrame`, `RenderScene3D`, ...) and returning a typed model of its reply, and the package `codec`
-decodes what the replies pack: maps, bitsets, depth, joints and stone tuples. Use this level to build what the
-interpreter does not: your own drawing, a dashboard of the unit, a bridge to your MES or ERP, a check of the model.
+<a id="low-level-one-call-per-operation"></a>
 
-The program is [examples/tutoriallowlevel/main.go](../../examples/tutoriallowlevel/main.go), one step after another;
-every step only reads, or sends a dry run. Give it a unit in `PDIGGER_FACTORY_URL` and, if you like, a frame:
+Use `client.API()` to check the unit’s status, request a frame and draw its stones and hands. Each method maps to
+one HTTP operation. The codec unpacks data such as depth images, joint positions and stone shapes.
+
+From the `examples` directory, run the [examples/tutoriallowlevel/main.go](../../examples/tutoriallowlevel/main.go)
+program.
+
+```sh
+PDIGGER_FACTORY_URL=http://factory-orin.local:8120 go run ./tutoriallowlevel
+```
+
+<details>
+<summary>Show the complete Go example</summary>
 
 ```go
 // Command tutoriallowlevel is the low-level tutorial (docs/tutorials/02-low-level.md) in one program: one call per
@@ -211,6 +218,8 @@ func size(wh []int64) string {
 	return strings.Join(parts, " x ")
 }
 ```
+
+</details>
 
 Against the SDK's fake unit playing the fixture dry1-0296-0306-full
 (`make fake-unit ARGS="-recording ../fixtures/recordings/dry1-0296-0306-full.ndjson.gz"`), at frame 1510, it prints

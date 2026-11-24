@@ -1,8 +1,8 @@
 # The low level
 
-`client.API()` has one method per operation of the API ([spec/openapi.yaml](../spec/openapi.yaml), 32 operations),
-named after its `operationId`, with typed parameters and replies. The higher levels are built on it. The `codec`
-package decodes the packed parts of the replies.
+Use `client.API()` to request a specific frame, fetch a model output or control the shared session. The 32 typed
+methods correspond to the [OpenAPI operations](../spec/openapi.yaml). The codec decodes packed maps, bitsets, depth
+and joint data.
 
 ```go
 api := client.API()

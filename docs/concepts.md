@@ -1,7 +1,8 @@
 # Concepts
 
-What the unit does, in the words the SDK uses. The measurements behind the numbers here are in
-[BEHAVIOUR-20.20.md](BEHAVIOUR-20.20.md).
+A factory unit follows one camera or recording at a time. Its **world** is the tracker’s current view of the stones,
+hands and events. Use this guide to interpret frames, coordinate systems and changes to the shared session.
+[Measurements from the 20.20 unit](BEHAVIOUR-20.20.md).
 
 ## The unit and its API
 
@@ -19,10 +20,9 @@ SDK's tests read `PDIGGER_FACTORY_URL`.
 
 ## The shared session
 
-The unit interprets one thing at a time, and everyone sees the same thing. The *session* is one source, one playhead
-and one interpretation, shared by every client. A select or a seek starts a new session (a new `session` id) for
-everybody; play and pause keep it. Every frame, event and activity carries its session id, and the interpreter starts
-afresh at a session change (it closes the moves that were open as `interrupted`).
+Every client shares one source, playhead and interpretation. Selecting a source or seeking starts a new session and
+assigns a new session ID. Play and pause keep the current ID. Frames, events and activities carry that ID. When it
+changes, the interpreter closes any open moves as `interrupted` and starts tracking the new session.
 
 The controls (`Session().Watch`, `Seek`, `Pause`, `Play`, `Focus`, `ClearFocus`) change the session for every viewer.
 Each one takes `DryRun()`, which asks the server to check the control and say what it would do without doing it.
@@ -89,24 +89,27 @@ default:
 
 (from [examples/session](../examples/session/main.go))
 
-Watching a camera (`client.Session().Watch(ctx, camera.ID, nil)`) starts a session at media time 0 and rate 1.0 with
-`State.Live` (`Phase`, `Warmup`, `Since`, `Lag`; `State.LivePhase()`). The phase is `connecting` until the camera's
-first frame (the worker's reason, in `API().GetSession`, says why when it takes long: `connecting to the camera`, `the
-camera is not answering`, `nobody is watching`), `warming` while the interpreter runs on the first `Warmup` seconds of
-frames, which warm the world but are never released, stored or served, and then `live` (`LivePhaseConnecting`,
-`LivePhaseWarming`, `LivePhaseLive`). `Play`, and a playing camera that sent no frame for 5 s (it stopped answering, or
-the worker idles with nobody watching), go back to `connecting`, and the next frame starts a new warm-up; a pause
-keeps the phase. Every change of phase bumps `Revision`, so the long-poll and the stream's `clock` event carry it;
-`Session().UntilLive(ctx, timeout)` waits for `live` by reading the state every 250 ms and once more at the timeout
-(`UntilLivePoll`, on the client's clock) and fails with `live_timeout` after the timeout. `Watch` counts as a viewer
-for 15 s, so `Watch` then `UntilLive` goes live on a unit nobody else watches; open the `Interpreter` (a viewer) to
-keep it live. From then on, frames are released as they are
-interpreted, at the camera's rate: `G` counts the session's camera frames from 0 (the warm-up's included, so the first
-shown is about 15 at 5 a second), `T` is a frame's arrival in seconds since `Since`, and the playhead runs at 1.0,
-`Lag` behind the camera. Each live frame comes with the camera's own picture, the JPEG it was interpreted from
-(`Session().Picture(ctx, pdiggerfactory.FrameAt(g))`, with `InSession(session)` to refuse a frame of a session that
-has ended; the newest 64 are kept); a recording has none. [examples/livecamera](../examples/livecamera/main.go)
-watches a camera this way.
+Call `client.Session().Watch(ctx, camera.ID, nil)` to start a camera session at media time zero and playback rate
+1.0. Read `State.Live` (`Phase`, `Warmup`, `Since`, `Lag`) to follow the connection.
+
+| Phase | What the unit is doing |
+| --- | --- |
+| `connecting` | Waiting for the camera’s first frame. The worker status explains a delay. |
+| `warming` | Feeding the first frames to the interpreter. The unit discards these frames after warm-up. |
+| `live` | Publishing each interpreted frame and its camera image. |
+
+Each transition increments the session revision and reaches clients through long-poll or a `clock` event.
+`Session().UntilLive(ctx, timeout)` polls every 250 ms. It reads once more at the deadline (`UntilLivePoll`) and
+returns `live_timeout` on expiry.
+
+`Play` starts a new connection, as does a playing camera that sends no frame for five seconds. The next frame starts
+warm-up again. A pause keeps the current phase. A watch counts as a viewer for 15 seconds. Open an interpreter
+stream to keep the unit processing frames after that.
+
+Frame numbers start at zero and include warm-up. At five frames per second, the first visible frame is about 15.
+Media time measures seconds since the camera started, and the playhead trails the camera by its reported lag. The
+unit keeps the latest 64 camera JPEGs. Read one with `Session().Picture(ctx, pdiggerfactory.FrameAt(g))`. Use
+`InSession(session)` to reject a frame from a session that has ended.
 
 | | A recording | A live camera |
 |---|---|---|

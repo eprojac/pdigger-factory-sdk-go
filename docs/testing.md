@@ -1,8 +1,8 @@
 # Testing
 
-Code built on the SDK can be unit-tested without a unit, a network or a real clock: package `factorytest` is a fake
-unit that answers the whole API from a recording and recorded replies. The SDK's own tests use it the same way
-(how they run is in [TESTING.md](../TESTING.md)).
+`factorytest` serves recorded responses through an in-process transport or a loopback HTTP server.
+`WithSampleRecording()` loads its embedded recording. See [the SDK test suite](../TESTING.md) for coverage and
+integration checks.
 
 ## A test against the fake unit
 

@@ -1,23 +1,16 @@
 # Contributing
 
-Thank you for improving the SDK. A change is ready when `make test` passes: it runs gofmt, go vet, every test with
-the race detector and 100 % statement coverage, the golden tests, the examples and the picture check, in Docker,
-with no network. `make lint` adds staticcheck.
+Run `make test` for formatting, vet, race detection, coverage, examples and fixture comparisons. Run `make lint` for
+staticcheck as well. [Test instructions](TESTING.md).
 
 ## The contract comes first
 
-This SDK is one of four (Go, Python, Rust, TypeScript) that follow one contract,
-[spec/SDK-DESIGN.md](spec/SDK-DESIGN.md), and the API document, [spec/openapi.yaml](spec/openapi.yaml). Both, and the
-fixtures, are shared by the four languages and change in all four at once: do not edit `spec/`, `fixtures/`,
-`docs/BEHAVIOUR-20.20.md` or `docs/img/architecture.*` here; open an issue or a pull request here and the maintainers
-make the change in all four. In particular:
+All four SDKs follow the [same behaviour contract](spec/SDK-DESIGN.md) and [HTTP API](spec/openapi.yaml). The
+maintainers sync the specification, fixtures, camera measurements and architecture diagram from the shared project.
+Open an issue or pull request here to propose a change to these shared files.
 
-- the sentences of events, activities and the summary are golden-tested byte for byte against `fixtures/golden/`;
-  a change to the text is a change to the contract;
-- names follow the API's `operationId`s and the contract's words (source, session, frame, layer, world, event,
-  activity), in Go's case;
-- the behaviour (what is retried, how streams resume, what the interpreter counts) is the contract's; the shape
-  (options, iterators, errors) is Go's.
+The tests compare event, activity and summary text with `fixtures/golden/` byte for byte. Use the API’s
+`operationId` names in Go naming style. The contract also defines retries, stream recovery and interpreter counts.
 
 ## Code
 
@@ -31,13 +24,10 @@ make the change in all four. In particular:
 
 ## Docs and examples
 
-Every Go block of `README.md` and `docs/` is copied from a program in `examples/`, which the tests run against the fake
-unit; `examples/docscheck` fails when a block is not found word for word, when a relative link is broken, and when a doc
-has a placeholder left (an upper-case token such as `JUL30_END`, or `TODO`, outside code). To change a sample, change
-the example (and its test) first, then copy it. The pictures in `docs/img/` are drawn by `make pictures` from what the
-SDK prints; never edit them by hand.
+Edit the program in `examples/` first, run its test, then copy the excerpt into the guide. `examples/docscheck`
+checks sample text, relative links and unfinished placeholders. Regenerate output pictures with `make pictures`.
 
 ## Commits and pull requests
 
-Keep a change to one subject, say in the message what it changes and why, and add a line to `CHANGELOG.md` for
-anything a user would notice, in the section that says `Unreleased` (start a `## Unreleased` section if there is none).
+Keep each change focused. Explain what it changes and why. Add user-visible changes to the current unreleased
+section of `CHANGELOG.md`, creating a section if needed.

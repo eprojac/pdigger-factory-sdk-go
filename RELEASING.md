@@ -1,17 +1,19 @@
 # Releasing
 
-A Go module is released by its tag; there is nothing to upload and no secret to set.
+The Git tag publishes the Go module version.
 
-1. Check that the site the docs, the examples and the integration workflow link to is live: the Swagger demo at
-   https://factory.pdigger.com/developers/api/ and the recordings at https://factory.pdigger.com/developers/data/
-   (`curl -fsSI https://factory.pdigger.com/developers/api/ https://factory.pdigger.com/developers/data/recordings.json`).
-   Then run the Integration workflow by hand: its recordings job downloads every published recording, checks its
-   sha256 and compares its replay with the published summary. Do not release while either fails.
-2. Set `Version` in [version.go](version.go) (the user agent sends it) and give the version's section of
-   `CHANGELOG.md` its date in place of `Unreleased`: `## <version> - <date>`.
-3. Merge to `main` and wait for CI.
-4. Tag and push: `git tag v<version> && git push origin v<version>`.
+1. Check that the [API demo](https://factory.pdigger.com/developers/api/) and
+   [recording downloads](https://factory.pdigger.com/developers/data/) are available. Run the Integration workflow
+   manually. It downloads the recordings, verifies their SHA-256 checksums and compares the replay summaries.
+   Continue when both checks pass.
 
-[.github/workflows/release.yml](.github/workflows/release.yml) then runs the unit tests in Docker, checks that the tag
-is `v` + `Version`, creates the GitHub release with the changelog's section as its notes (with the workflow's own
-`GITHUB_TOKEN`), and fetches the version through `proxy.golang.org`, which puts it on the proxy and on pkg.go.dev.
+2. Update `Version` in [version.go](version.go). In `CHANGELOG.md`, replace `Unreleased` in the version heading with
+   the release date.
+
+3. Merge to `main` and wait for CI to pass.
+4. Tag the tested commit with `v` followed by the version, then push that tag. For version 0.1.0, run
+   `git tag v0.1.0` followed by `git push origin v0.1.0`.
+
+The [release workflow](.github/workflows/release.yml) checks the tag against `Version`, runs the Docker tests and
+creates a GitHub release using the matching changelog section. It fetches the version through `proxy.golang.org` so
+it is available to Go users and on pkg.go.dev. GitHub supplies the workflow token.

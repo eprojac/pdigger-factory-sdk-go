@@ -7,20 +7,16 @@ make test         # docker build -f Dockerfile.test, then docker run --rm --netw
 make test-local   # the same script with your Go toolchain (1.23 or later)
 ```
 
-`make test` builds `Dockerfile.test` (Go 1.27.4 on Debian bookworm, the SDK compiled at build time) and runs
-[scripts/test.sh](scripts/test.sh) in a container with no network. The script fails at the first step that fails:
+`make test` builds the SDK with Go 1.27.4 on Debian bookworm. It runs the [test script](scripts/test.sh) with the
+container network disabled. The checks run in this order and stop at the first failure.
 
-1. `gofmt -l` is empty, and `go vet` passes in the three modules (the SDK, `examples/`, `tools/`);
-2. the SDK's tests, with the race detector: `go test -race -covermode=atomic -coverpkg=./... ./...`;
-3. every statement of the SDK is covered: [scripts/coverage-check.sh](scripts/coverage-check.sh) counts the
-   profile's statements exactly and fails on one uncovered statement, listing the uncovered blocks and the functions
-   below 100 % (`go tool cover -func` rounds: it prints 100.0 % with one statement in 3,500 uncovered);
-4. the examples: every program of `examples/` runs against the fake unit and prints what its docs say, and
-   `examples/docscheck` fails when a Go block of the README or `docs/` is not in an example, word for word, a
-   relative link is broken, or a doc has a placeholder left (an upper-case token such as `JUL30_END`, or `TODO`,
-   outside code; the shared copy `docs/BEHAVIOUR-20.20.md` included);
-5. the tools: `tools/pictures` fails when a picture of `docs/img/` is not what the SDK prints now, and
-   `tools/fakeunit` serves the fake unit on a port.
+1. Check formatting with `gofmt -l` and run `go vet` in the SDK, examples and tools modules.
+2. Run the SDK tests with the race detector and atomic statement coverage.
+3. Check the exact statement count using the [coverage script](scripts/coverage-check.sh). It lists uncovered blocks
+   and functions. The rounded percentage from `go tool cover -func` can hide a missed statement.
+4. Run the examples against the fake unit. `examples/docscheck` checks that code blocks match the examples, relative
+   links resolve and the docs have no unfinished placeholders.
+5. Compare generated pictures with the checked-in output and test the loopback server in `tools/fakeunit`.
 
 Nothing needs a unit or a network: the tests use the fixtures and the fake unit (`factorytest`), in process. Time and
 randomness are injected (`factorytest.Clock`, `WithRand`), so retries, backoff, backfill, its read timeouts and pacing

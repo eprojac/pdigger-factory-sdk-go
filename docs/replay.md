@@ -1,8 +1,7 @@
 # Replays
 
-`OpenReplay` runs the interpreter over a recording file, offline: the same events, activities, tray facts, state and
-summary as when following a unit, from a file instead of a stream. Use it to analyse a shift after the fact, to develop against
-real data without a unit, and to test.
+Pass a file path or URL to `OpenReplay`. The interpreter reads recorded frames and side events in order, so you can
+reproduce a tray report without connecting to the factory.
 
 ## Recordings
 
@@ -98,9 +97,9 @@ each kind, and the tests replay it.
 
 ## Trays
 
-`Trays(ctx)` reads the whole recording and lists its trays, each with the point where it had arrived and settled and
-the point just before it moved out, its tray stones (the SDK's own ids, never reused) and its facts
-([the interpreter](interpreter.md#trays-and-tray-stones)):
+`Trays(ctx)` reads the full recording and returns its trays in order. Each tray includes its stones, facts and the
+points when it settled and left. Use these points to seek to the same tray in a player.
+[Tray identity and events](interpreter.md#trays-and-tray-stones).
 
 ```go
 	trays, err := replay.Trays(ctx)
