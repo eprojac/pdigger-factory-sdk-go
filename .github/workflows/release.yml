@@ -1,6 +1,6 @@
 name: Release
 
-# A tag v<version> (for example v0.1.0) releases the module: the unit tests again, a GitHub release with the
+# A tag v<version> (for example v1.0.0) releases the module: the unit tests again, a GitHub release with the
 # CHANGELOG.md section of that version, then a fetch through proxy.golang.org so that the version is on the proxy
 # and on pkg.go.dev at once. Go modules need no other publishing and no secrets.
 on:
@@ -44,6 +44,7 @@ jobs:
           fi
           cat "$RUNNER_TEMP/notes.md"
       - name: GitHub release
+        if: vars.SDK_GITHUB_ONLY_TAG != github.ref_name
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md"

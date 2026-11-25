@@ -286,3 +286,11 @@ stay open; and the raw packets ([examples/streams](../../examples/streams/main.g
 
 - [Live cameras](03-live-cameras.md): select a plant camera and follow it.
 - [Go](04-go.md): contexts, errors and testing in this SDK.
+
+## Draw a recorded frame
+
+These two views show frame 3079 of the `dry2` recording. The left panel draws the outline of each stone in camera
+pixels. The right panel draws the same 42 stones on the board using their recorded dimensions, positions and
+orientations. The example above reads both sets of drawing data with `RenderOverlay2D` and `RenderScene3D`.
+
+![Camera overlay and 3D tray drawn from the same recorded Go API responses](../img/overlay-scene-dry2-g3079.png)
