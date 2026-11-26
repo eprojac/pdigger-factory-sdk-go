@@ -886,10 +886,16 @@ type LookFace struct {
 
 // HandState is a hand's state in the world: free, touch, grasp, hinge or carry, and the stone it holds.
 type HandState struct {
+	// State is free, touch, grasp, hinge or carry. Touch and grasp are the temporal model's contact readings. With
+	// fixer thin-v1 (dry videos and cameras), a hand in contact that holds no stone and whose wrist is off the board
+	// (the regions' tray map) is sent as free, with Away true.
 	State     string   `json:"state"`
 	Stone     *int64   `json:"stone"`
 	RayK      *float64 `json:"rayK,omitempty"`
 	Untrusted *bool    `json:"untrusted,omitempty"`
+	// Away is present (true) only on a hand sent as free because it is in contact away from the board: a worker's
+	// hand busy beside the board, or a false hand on machinery. It does not hold a stone and does not work on the tray.
+	Away *bool `json:"away,omitempty"`
 }
 
 // WorldHands are both hands of the world.

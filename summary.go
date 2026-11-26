@@ -86,7 +86,9 @@ type StoneCounts struct {
 	ConfirmedLast *int64 `json:"confirmed_last"`
 }
 
-// HandStateTimes are media seconds a hand spent in each state (0.2 s per grid frame with a world).
+// HandStateTimes are media seconds a hand spent in each state: each frame with a world adds its step (section 4.5 of
+// the SDK design: the media time since the session's previous frame when that frame is the grid step before it, else
+// the previous step; 0.2 s on a recorded video, about 0.3 s on a plant camera).
 type HandStateTimes struct {
 	Free  float64 `json:"free"`
 	Touch float64 `json:"touch"`
@@ -141,7 +143,7 @@ func itoa(v int64) string { return strconv.FormatInt(v, 10) }
 //	push bursts: 51 (left 25, right 16, both 10), pushes 456
 //	events: new 276, confirm 119, ...
 //	trays: 2 (arrived 2), stones at arrival 83, added 0 (+14 unclear), removed 6 (+9 unclear), not sure 37
-//	left hand: free 0:54.0, touch 0:52.4, grasp 0:17.2, hinge 0:00.4, carry 0:02.4
+//	left hand: free 0:53.7, touch 0:52.1, grasp 0:17.1, hinge 0:00.4, carry 0:02.4
 //	right hand: ...
 func (s *Summary) Describe() string {
 	var b strings.Builder

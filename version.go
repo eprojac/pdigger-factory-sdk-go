@@ -1,7 +1,7 @@
 package pdiggerfactory
 
 // Version is the SDK version.
-const Version = "1.0.0"
+const Version = "1.0.1"
 
 // UserAgent is the User-Agent the client sends (an optional suffix is appended after a space).
 const UserAgent = "pdigger-factory-sdk-go/" + Version

@@ -182,3 +182,27 @@ func TestPackageDefaults(t *testing.T) {
 		t.Fatal("LatestFrame")
 	}
 }
+
+func TestHandStateAway(t *testing.T) {
+	// away is present (true) only on a hand sent as free because it is in contact away from the board
+	for _, tc := range []struct {
+		in   string
+		want *bool
+	}{
+		{`{"state":"free","stone":null}`, nil},
+		{`{"state":"free","stone":null,"away":true}`, Bool(true)},
+		{`{"state":"free","stone":null,"away":false}`, Bool(false)},
+	} {
+		var h HandState
+		if err := json.Unmarshal([]byte(tc.in), &h); err != nil {
+			t.Fatalf("%s: %v", tc.in, err)
+		}
+		if (h.Away == nil) != (tc.want == nil) || (h.Away != nil && *h.Away != *tc.want) {
+			t.Fatalf("%s: away %v", tc.in, h.Away)
+		}
+	}
+	var h HandState
+	if err := json.Unmarshal([]byte(`{"state":"free","away":"yes"}`), &h); err == nil {
+		t.Fatal(`away "yes" decoded`)
+	}
+}

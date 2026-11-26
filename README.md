@@ -13,7 +13,7 @@ Advanced mode gives you the events, frames and tracking evidence behind each rep
 The SDK uses the Go standard library and requires Go 1.23 or later. Add it to an existing Go module with `go get`.
 
 ```sh
-go get github.com/eprojac/pdigger-factory-sdk-go@v1.0.0
+go get github.com/eprojac/pdigger-factory-sdk-go@v1.0.1
 ```
 
 For package documentation, run `go doc github.com/eprojac/pdigger-factory-sdk-go` in your module or read the

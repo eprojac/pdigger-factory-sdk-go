@@ -1,6 +1,7 @@
 package pdiggerfactory
 
 import (
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -27,6 +28,69 @@ func describeAll(acts []Activity) string {
 		s = append(s, a.Describe())
 	}
 	return strings.Join(s, " | ")
+}
+
+func TestCoreHandStepsFollowTheCamera(t *testing.T) {
+	c := NewInterpreterCore()
+	grasp := func(session, g int64, at float64) *Frame {
+		f := wframe(session, g, 0, nil)
+		f.T = at
+		f.World.Hands = WorldHands{Left: &HandState{State: "grasp"}, Right: &HandState{State: "free"}}
+		return f
+	}
+	free := func(session, g int64, at float64) *Frame {
+		f := grasp(session, g, at)
+		f.World.Hands.Left = &HandState{State: "free"}
+		return f
+	}
+	// a plant camera: g counts the frames its worker released, 0.3 s apart (then 0.31 s, a frame without a world, 0.24 s)
+	c.Feed(grasp(1, 100, 30))
+	c.Feed(grasp(1, 101, 30.3))
+	c.Feed(free(1, 102, 30.61))
+	noWorld := wframe(1, 103, 0, nil)
+	noWorld.T, noWorld.World = 30.95, nil
+	c.Feed(noWorld)
+	c.Feed(grasp(1, 104, 31.19))
+	c.Feed(free(1, 104, 31.19)) // the same frame again: dropped, it adds nothing
+	// after a gap (two frames the unit skipped, 8.81 s) a frame adds the session's previous step, 0.24 s
+	c.Feed(grasp(1, 107, 40))
+	// a new session's first frame adds one grid frame, 0.2 s; after a gap, the previous step again
+	c.Feed(grasp(2, 7, 1.4))
+	c.Feed(grasp(2, 9, 1.8))
+	s := c.Summary()
+	if s.Hands.Left.Grasp != 1.38 || s.Hands.Left.Free != 0.31 || s.Hands.Right.Free != 1.69 || s.MediaSeconds != 10.4 {
+		t.Fatalf("hands %+v media %v", s.Hands, s.MediaSeconds)
+	}
+	for _, tc := range []struct {
+		has   bool
+		gp    int64
+		tp    float64
+		step  int64
+		g     int64
+		at    float64
+		steps int64
+	}{
+		{false, 0, 0, 0, 5, 1, 200}, // a session's first frame
+		{true, 4, 0.8, 200, 5, 1.1, 300},
+		{true, 4, 0.8, 250, 6, 1.1, 250}, // after a gap
+		{true, 4, 0.8, 250, 5, math.NaN(), 250},
+		{true, 4, math.NaN(), 250, 5, 1, 250},
+		{true, 4, 0.8, 250, 5, math.Inf(1), 250},
+		{true, 4, math.Inf(-1), 250, 5, 1, 250},
+		{true, 4, 1, 250, 5, 1, 250}, // a t not after the previous one
+		{true, 4, 1, 250, 5, 0.5, 250},
+		{true, 4, 1, 250, 5, 1.0004, 250}, // below 1 ms
+		{true, 4, 1, 250, 5, 1.0006, 1},
+		{true, 4, 0, 250, 5, 2147483.6, 2147483600},
+		{true, 4, 0, 250, 5, 2147483.7, 250},                   // 2^31 ms or more
+		{true, 4, -1e308, 250, 5, 1e308, 250},                  // the difference overflows
+		{true, math.MaxInt64, 1, 250, math.MinInt64, 1.1, 250}, // no wrap-around
+	} {
+		if got := frameStepMs(tc.has, tc.gp, tc.tp, tc.step, tc.g, tc.at); got != tc.steps {
+			t.Errorf("frameStepMs(%v, %d, %v, %d, %d, %v) = %d, want %d", tc.has, tc.gp, tc.tp, tc.step, tc.g, tc.at, got,
+				tc.steps)
+		}
+	}
 }
 
 func TestCoreMovesAndBursts(t *testing.T) {

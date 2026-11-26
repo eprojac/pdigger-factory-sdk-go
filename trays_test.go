@@ -84,7 +84,7 @@ func TestTrayValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ns := trayNumbers(trays); !slices.Equal(ns, []int64{1, 2, 3, 4, 5, 6, 7}) {
+	if ns := trayNumbers(trays); !slices.Equal(ns, []int64{1, 2, 3, 4, 5, 6, 7, 8}) {
 		t.Fatal(ns)
 	}
 	first := trays[0]
@@ -310,7 +310,7 @@ func TestEventsNameTheirTrayStone(t *testing.T) {
 			t.Errorf("%s: %q (%v), want %q", k, v, ok, want)
 		}
 	}
-	if len(trays) != 7 {
+	if len(trays) != 8 {
 		t.Fatal(trays)
 	}
 	core.End()
@@ -331,25 +331,25 @@ func TestCoreKeepsTheNewestTrays(t *testing.T) {
 		}
 		last = trayNumbers(core.Trays())
 	})
-	if !slices.Equal(last, []int64{5, 6, 7}) { // tray 7 is on, the 2 newest that have left before it
+	if !slices.Equal(last, []int64{6, 7, 8}) { // tray 8 is on, the 2 newest that have left before it
 		t.Fatal(last)
 	}
 	core.End()
-	if ns := trayNumbers(core.Trays()); !slices.Equal(ns, []int64{6, 7}) {
+	if ns := trayNumbers(core.Trays()); !slices.Equal(ns, []int64{7, 8}) {
 		t.Fatal(ns)
 	}
 	one := NewInterpreterCore()
 	one.KeepTrays(1)
 	feedSynth(t, one, true, nil)
 	one.End()
-	if ns := trayNumbers(one.Trays()); !slices.Equal(ns, []int64{7}) {
+	if ns := trayNumbers(one.Trays()); !slices.Equal(ns, []int64{8}) {
 		t.Fatal(ns)
 	}
 	all := NewInterpreterCore()
 	all.KeepTrays(0)
 	feedSynth(t, all, true, nil)
-	if ns := trayNumbers(all.Trays()); !slices.Equal(ns, []int64{1, 2, 3, 4, 5, 6, 7}) || all.State().Tray.N != 7 {
-		t.Fatal(ns) // tray 7 is still on
+	if ns := trayNumbers(all.Trays()); !slices.Equal(ns, []int64{1, 2, 3, 4, 5, 6, 7, 8}) || all.State().Tray.N != 8 {
+		t.Fatal(ns) // tray 8 is still on
 	}
 }
 
@@ -382,7 +382,7 @@ func TestInterpreterTrayFacts(t *testing.T) {
 	r.Close()
 	fake := newFake(t, factorytest.WithRecording(synthPath))
 	c, _ := fakeClient(t, fake)
-	// the connection ends after the last frame; without resume, so does the stream, with the final update (tray 7 leaves)
+	// the connection ends after the last frame; without resume, so does the stream, with the final update (tray 8 leaves)
 	in := c.Interpreter(Resume(false), ConnectionLimit(frames))
 	var got []TrayFact
 	for f, err := range in.TrayFacts(ctx) {
@@ -394,7 +394,7 @@ func TestInterpreterTrayFacts(t *testing.T) {
 	if factsText(got) != golden {
 		t.Fatal(factsText(got))
 	}
-	if ns := trayNumbers(in.Trays()); !slices.Equal(ns, []int64{1, 2, 3, 4, 5, 6, 7}) {
+	if ns := trayNumbers(in.Trays()); !slices.Equal(ns, []int64{1, 2, 3, 4, 5, 6, 7, 8}) {
 		t.Fatal(ns)
 	}
 	if u := in.End(); !u.Final || len(u.TrayFacts) != 0 { // the stream's end made the last tray leave

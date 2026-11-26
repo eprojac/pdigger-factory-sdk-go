@@ -1306,22 +1306,33 @@ func lookClearer(typ string) bool {
 
 func (l *trayLedger) begin(out *[]TrayFact) {
 	ids := map[int64]struct{}{}
+	unheld := map[int64]struct{}{}
 	for _, s := range l.stop[0].stones {
-		if !inHand(s) {
+		if inHand(s) {
+			continue
+		}
+		unheld[s.ID] = struct{}{}
+		if s.Detected {
 			ids[s.ID] = struct{}{}
 		}
 	}
-	seen := 0
+	seen, seenAll := 0, 0
 	if tr := l.tray; tr != nil {
-		for id := range ids {
+		for id := range unheld {
 			if _, ok := tr.ids[id]; ok {
-				seen++
+				seenAll++
+				if _, detected := ids[id]; detected {
+					seen++
+				}
 			}
 		}
 	}
-	// a visit continues the open tray only when nearly all (nine tenths) of its first frame's stones were seen on the
-	// tray: a new board under the camera may carry many of the last board's world ids (section 4.6.1)
-	if !(l.tray != nil && len(ids) > 0 && 10*seen >= 9*len(ids)) {
+	// a visit continues the open tray only on the camera's word (section 4.6.1): at least one of its first frame's
+	// detected stones was seen on the tray, and nine tenths of those detected stones were, or nine tenths of all its
+	// stones that no hand holds (a jolt can leave most of a board's stones only remembered and rename one of the few the
+	// camera sees). A new board under the camera may carry many of the last board's world ids, and a board that drove
+	// off may leave its stones remembered (not detected) where it stood.
+	if !(seen > 0 && (10*seen >= 9*len(ids) || 10*seenAll >= 9*len(unheld))) {
 		l.closeTray(out)
 		l.n++
 		l.c.Total++

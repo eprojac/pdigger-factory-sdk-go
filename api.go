@@ -780,7 +780,8 @@ type Picture struct {
 	// G is the frame's grid index (the reply's X-Interp-G header: the frame LatestFrame() was).
 	G int64
 	// JPEG is the picture as it arrived (640 x 360 on the plant rigs; the layers' native pixels are this picture
-	// stretched to the source's NativeWH).
+	// scaled to fit the source's NativeWH and centred, the rest black: a picture of another shape is letterboxed,
+	// from worker claude-20261125-dspad1 on; earlier workers stretched it).
 	JPEG []byte
 }
 

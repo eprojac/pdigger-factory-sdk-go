@@ -204,7 +204,11 @@ type InterpreterCore struct {
 	stonesLast    *int64
 	stonesMax     int64
 	confirmedLast *int64
-	handFrames    [2][5]int64
+	handMs        [2][5]int64 // per hand and state, the steps of the frames with a world (frameStepMs)
+	hasStepPrev   bool        // the session's previous new frame and its step (stepMs), for the steps
+	stepPrevG     int64
+	stepPrevT     float64
+	stepMs        int64 // the newest frame's step
 
 	ledger     *trayLedger
 	trays      []Tray // trays that have left, oldest first
@@ -332,6 +336,23 @@ func (c *InterpreterCore) ref(f *Frame) Moment {
 // stream; call it yourself when you feed a core from Items.
 func (c *InterpreterCore) Gap() { c.ledger.skipped() }
 
+// frameStepMs is the milliseconds a new frame adds to its hands' states (section 4.5 of the SDK design): the media
+// time since the session's previous new frame (gPrev, tPrev, stepPrev) when that frame is the grid step before it
+// (g == gPrev+1), in whole milliseconds, half up, when that is at least 1 ms and below 2^31 ms; otherwise the session's
+// previous step (a frame after a gap, a t not after the previous one or not a finite number), and 200 (one grid frame
+// of a recorded video) for a session's first frame.
+func frameStepMs(hasPrev bool, gPrev int64, tPrev float64, stepPrev int64, g int64, t float64) int64 {
+	if !hasPrev {
+		return 200
+	}
+	if gPrev < math.MaxInt64 && g == gPrev+1 {
+		if x := (t-tPrev)*1000 + 0.5; x >= 1 && x < 1<<31 {
+			return int64(math.Floor(x))
+		}
+	}
+	return stepPrev
+}
+
 // Feed processes one frame (section 2.4 of the SDK design) and returns what it changed.
 func (c *InterpreterCore) Feed(f *Frame) *Update {
 	u := &Update{Frame: f}
@@ -349,6 +370,7 @@ func (c *InterpreterCore) Feed(f *Frame) *Update {
 		c.counters.Sessions++
 		c.hasSessionT = false
 		c.hasPrevG = false
+		c.hasStepPrev = false
 	} else if c.hasPrevG && f.G <= c.prevG {
 		seen, ok := c.revs[f.G]
 		if w == nil || !ok || rev <= seen {
@@ -391,6 +413,8 @@ func (c *InterpreterCore) Feed(f *Frame) *Update {
 		c.ledger.skipped()
 	}
 	c.hasPrevG, c.prevG = true, f.G
+	c.stepMs = frameStepMs(c.hasStepPrev, c.stepPrevG, c.stepPrevT, c.stepMs, f.G, f.T)
+	c.hasStepPrev, c.stepPrevG, c.stepPrevT = true, f.G, f.T
 	if !c.hasSessionT {
 		c.hasSessionT, c.sessionFirstT = true, f.T
 	}
@@ -446,7 +470,7 @@ func (c *InterpreterCore) Feed(f *Frame) *Update {
 		}
 		for k, st := range handStates {
 			if h.State == st {
-				c.handFrames[i][k]++
+				c.handMs[i][k] += c.stepMs
 			}
 		}
 	}
@@ -856,9 +880,9 @@ func (c *InterpreterCore) Summary() *Summary {
 		s.Moves.MeanDistance = Float64(Round3(c.sumDist / float64(c.nDist)))
 	}
 	times := func(i int) HandStateTimes {
-		h := c.handFrames[i]
-		return HandStateTimes{Free: Round3(0.2 * float64(h[0])), Touch: Round3(0.2 * float64(h[1])),
-			Grasp: Round3(0.2 * float64(h[2])), Hinge: Round3(0.2 * float64(h[3])), Carry: Round3(0.2 * float64(h[4]))}
+		h := c.handMs[i]
+		return HandStateTimes{Free: Round3(float64(h[0]) / 1000), Touch: Round3(float64(h[1]) / 1000),
+			Grasp: Round3(float64(h[2]) / 1000), Hinge: Round3(float64(h[3]) / 1000), Carry: Round3(float64(h[4]) / 1000)}
 	}
 	s.Hands = HandTimes{Left: times(0), Right: times(1)}
 	return s

@@ -6,7 +6,8 @@ import (
 )
 
 // Version 4 of the tray rules (SDK-DESIGN.md 4.6.1): a certain removal needs a hand on the stone, and a visit continues
-// the open tray only when nine tenths of its first frame's stones were seen on it.
+// the open tray only on the camera's word: of the stones no hand holds at its first frame, the tray saw one the world
+// detects, and nine tenths of the detected ones or of them all.
 
 type handStep struct {
 	stones []StoneView
@@ -204,6 +205,88 @@ func handBoard(known int) []Tray {
 	return handPlay(steps)
 }
 
+// handDroveOff: ten stones arrive; the conveyor moves; the next stop's first frame shows seven of them where they stood,
+// detected or only remembered, and the world loses them one after another.
+func handDroveOff(detected bool) []Tray {
+	var first []StoneView
+	for i := 0; i < 10; i++ {
+		first = append(first, handStone(int64(i), -0.9+0.2*float64(i)))
+	}
+	var steps []handStep
+	for g := 0; g < 12; g++ {
+		steps = append(steps, handStep{stones: first})
+	}
+	for g := 0; g < 3; g++ {
+		steps = append(steps, handStep{stones: first, moving: true})
+	}
+	var left []StoneView
+	for _, s := range first[3:] {
+		s.Detected = detected
+		left = append(left, s)
+	}
+	for g := 0; g < 2; g++ {
+		steps = append(steps, handStep{stones: left})
+	}
+	for i := 3; i < 10; i++ {
+		left = left[1:]
+		steps = append(steps, handStep{stones: left,
+			events: []WorldEvent{{Type: EventDelete, ID: Int64(int64(i)), Why: "absent"}}})
+	}
+	for g := 0; g < 10; g++ {
+		steps = append(steps, handStep{stones: left})
+	}
+	return handPlay(steps)
+}
+
+func TestTrayVisitOnlyRememberingTheStonesIsANewTray(t *testing.T) {
+	// a board that drove off: the stones the world remembers where it stood say nothing about the belt
+	trays := handDroveOff(false)
+	if len(trays) != 2 || trays[0].N != 1 || trays[1].N != 2 {
+		t.Fatalf("%d trays", len(trays))
+	}
+	if len(trays[0].Stones) != 10 {
+		t.Fatalf("%d stones", len(trays[0].Stones))
+	}
+	for _, s := range trays[0].Stones {
+		if s.Status != TrayStoneOn {
+			t.Fatalf("stone %s: %s", s.ID, s.Status)
+		}
+	}
+	for _, f := range trays[0].Facts {
+		if f.Kind == TrayRemoved || f.Kind == TrayAdded {
+			t.Fatalf("fact %s %s", f.Kind, f.Stone)
+		}
+	}
+}
+
+func TestTrayVisitDetectingTheStonesGoesOn(t *testing.T) {
+	trays := handDroveOff(true)
+	if len(trays) != 1 || trays[0].N != 1 {
+		t.Fatalf("%d trays", len(trays))
+	}
+	if len(trays[0].Stones) != 10 {
+		t.Fatalf("%d stones", len(trays[0].Stones))
+	}
+	for _, s := range trays[0].Stones {
+		if s.Status != TrayStoneRemoved {
+			t.Fatalf("stone %s: %s", s.ID, s.Status)
+		}
+	}
+	removals := 0
+	for _, f := range trays[0].Facts {
+		if f.Kind != TrayRemoved {
+			continue
+		}
+		removals++
+		if f.Certain == nil || *f.Certain {
+			t.Fatalf("a certain removal of %s", f.Stone)
+		}
+	}
+	if removals == 0 {
+		t.Fatal("no removals")
+	}
+}
+
 func TestTrayVisitContinuesWithNineTenths(t *testing.T) {
 	trays := handBoard(9)
 	if len(trays) != 1 || trays[0].N != 1 {
@@ -225,6 +308,81 @@ func TestTrayVisitWithFewerThanNineTenthsIsANewTray(t *testing.T) {
 		}
 		if on != 10 {
 			t.Fatalf("tray %d: %d stones on", tr.N, on)
+		}
+	}
+}
+
+// handJolt: ten stones arrive; the conveyor jolts; the next stop's first frame shows kept of them only remembered (not
+// detected) and the next detected of them detected where they stood, fresh detected stones with ids the tray never saw
+// (a rename, or another board's), unknown remembered ids it never saw and held detected stones it never saw in a hand
+// (mode carry, gone after that frame); after it the world detects them all.
+func handJolt(kept, detected, fresh, unknown, held int) []Tray {
+	var first []StoneView
+	for i := 0; i < 10; i++ {
+		first = append(first, handStone(int64(i), -0.9+0.2*float64(i)))
+	}
+	var steps []handStep
+	for g := 0; g < 12; g++ {
+		steps = append(steps, handStep{stones: first})
+	}
+	for g := 0; g < 3; g++ {
+		steps = append(steps, handStep{stones: first, moving: true})
+	}
+	var next []StoneView
+	var news []WorldEvent
+	for i := 0; i < kept+detected; i++ {
+		s := handStone(int64(i), -0.9+0.2*float64(i))
+		s.Detected = i >= kept
+		next = append(next, s)
+	}
+	for k := 0; k < fresh; k++ {
+		next = append(next, handStone(int64(100+k), -0.9+0.2*float64(kept+detected+k)))
+		news = append(news, WorldEvent{Type: EventNew, ID: Int64(int64(100 + k))})
+	}
+	for k := 0; k < unknown; k++ {
+		s := handStone(int64(200+k), -0.9+0.2*float64(k))
+		s.Solid.Pos[1] = 0.4
+		s.Detected = false
+		next = append(next, s)
+	}
+	first2 := append([]StoneView{}, next...)
+	for k := 0; k < held; k++ {
+		s := handStone(int64(300+k), -0.9+0.2*float64(k))
+		s.Solid.Pos[1] = -0.4
+		s.Mode = "carry"
+		first2 = append(first2, s)
+	}
+	steps = append(steps, handStep{stones: first2, events: news})
+	var all []StoneView
+	for _, s := range next {
+		s.Detected = true
+		all = append(all, s)
+	}
+	for g := 0; g < 11; g++ {
+		steps = append(steps, handStep{stones: all})
+	}
+	return handPlay(steps)
+}
+
+func TestTrayVisitAfterAJolt(t *testing.T) {
+	for _, c := range []struct {
+		name                                 string
+		kept, detected, fresh, unknown, held int
+		want                                 int
+	}{
+		// all the detected stones were seen, whatever else the world remembers: the same tray
+		{"detected seen, unknown remembered", 0, 9, 0, 2, 0, 1},
+		// no detected stone was seen, however many remembered ones were: a new tray
+		{"only a new stone detected", 9, 0, 1, 0, 0, 2},
+		// two of three detected stones seen (less than nine tenths), but nine of all ten: the same tray
+		{"most remembered, one renamed", 7, 2, 1, 0, 0, 1},
+		// two of four detected and two of all ten seen: a new tray
+		{"few seen", 0, 2, 2, 6, 0, 2},
+		// two held stones the tray never saw are left out: all nine detected ones were seen, the same tray
+		{"held stones left out", 0, 9, 0, 0, 2, 1},
+	} {
+		if trays := handJolt(c.kept, c.detected, c.fresh, c.unknown, c.held); len(trays) != c.want {
+			t.Errorf("%s: %d trays, want %d", c.name, len(trays), c.want)
 		}
 	}
 }

@@ -359,7 +359,9 @@ of a stone since the session began, with its 2-D path, is `client.API().GetStone
 `Summary()` (and a replay's `Summary`, `Run`) counts what was seen: frames, sessions, gaps, events by type, moves by
 outcome with their mean duration and distance, push bursts by hand, stones, trays (opened and arrived, tray stones at
 the arrivals, certain and unclear additions and removals, tray stones that stopped being sure), and the seconds each
-hand spent in each state (0.2 s per frame with a world). `Describe()` is its text, the same in every language:
+hand spent in each state (each frame with a world adds its step: the media time since the session's previous frame
+when that frame is the grid step before it, and after a gap the previous step; 0.2 s on a recorded video, 0.199 s on
+dry1 and dry2, about 0.3 s on a plant camera, whose worker releases about three frames a second; SDK-DESIGN.md 4.5). `Describe()` is its text, the same in every language:
 
 ```text
 frames: 151 (with world 151, without 0, revisions 0)
