@@ -325,7 +325,7 @@ func speckleTargets(tr *openTray, sp *WorldSpeckle, tw *trayWorld) []speckleTarg
 		c, r := p[0], p[1]
 		s := byTray[tr.arrivalLinks[r]]
 		ws := pointStone(tr, c, tw)
-		if s == nil || s.added || (s.status != TrayStoneOn && s.status != TrayStoneLost) || ws == nil || inHand(ws) ||
+		if s == nil || s.underSheet || s.added || (s.status != TrayStoneOn && s.status != TrayStoneLost) || ws == nil || ws.UnderSheet || inHand(ws) ||
 			claimed[c] || used[s] {
 			continue
 		}

@@ -822,7 +822,7 @@ func (f *Fake) world(q map[string][]string) (any, *apiError) {
 }
 
 var eventTypes = map[string]bool{"new": true, "confirm": true, "freeze": true, "push": true, "lift": true,
-	"hinge": true, "carry": true, "place": true, "drop": true, "gone": true, "delete": true, "split": true}
+	"hinge": true, "carry": true, "place": true, "drop": true, "gone": true, "delete": true, "split": true, "sheet": true}
 
 func intParam(q map[string][]string, key string, def, lo, hi int64, msg string) (int64, *apiError) {
 	v := q[key]

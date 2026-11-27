@@ -166,7 +166,7 @@ if err != nil {
 | `WithRand(r)` | a random source | the jitter's source; a seeded one makes retries deterministic |
 | `WithHeader(k, v)` | none | an extra header on every request |
 | `WithBearerToken(t)` | none | `Authorization: Bearer <t>` (the 20.20 unit ignores it; the shipped API may require it) |
-| `WithUserAgentSuffix(s)` | none | appended to `pdigger-factory-sdk-go/1.0.1` |
+| `WithUserAgentSuffix(s)` | none | appended to `pdigger-factory-sdk-go/1.1.0` |
 | `WithHTTPClient(hc)`, `WithTransport(rt)` | the SDK's transport | your own HTTP client or transport (`factorytest` gives one) |
 | `WithObserve(bool)` | false | the default of `Observe` for the streams |
 | `WithClock(clk)` | the system clock | the clock of retries, reconnects, backfill and its read timeouts, the clock read on connect, `ConnectionMaxSeconds` and the session clock (`factorytest.NewClock` for tests) |

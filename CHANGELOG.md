@@ -3,6 +3,11 @@
 This SDK follows [semantic versioning](https://semver.org/). The release workflow uses the matching version section
 as its release notes.
 
+## 1.1.0 - Unreleased
+
+- Report paper laid over or lifted from stones and preserve the tray inventory under paper.
+- Accept a fixed native-pixel tray rectangle through InterpreterCore.SetTrayBounds to follow partial lifts.
+
 ## 1.0.1 - 2026-11-26
 
 This patch release also adds a public field, `HandState.Away` (JSON `away`); by Semantic Versioning a release that adds

@@ -163,7 +163,7 @@ func TestPackageDefaults(t *testing.T) {
 	types := EventTypes()
 	sort.Strings(types)
 	types[0] = "changed"
-	if got := strings.Join(EventTypes(), ","); got != "new,confirm,freeze,push,lift,hinge,carry,place,drop,gone,delete,split" {
+	if got := strings.Join(EventTypes(), ","); got != "new,confirm,freeze,push,lift,hinge,carry,place,drop,gone,delete,split,sheet" {
 		t.Fatal(got)
 	}
 	if d := NewInterpreterCore().Summary().Describe(); !strings.Contains(d, "\nevents: new 0, confirm 0, freeze 0, push 0, "+

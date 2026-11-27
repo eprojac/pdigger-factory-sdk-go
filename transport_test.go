@@ -58,7 +58,7 @@ func TestRequestHeaders(t *testing.T) {
 		r.URL.String() != "http://factory.test/api/v2/health" {
 		t.Fatalf("headers %v %s", r.Header, r.URL)
 	}
-	if UserAgent != "pdigger-factory-sdk-go/1.0.1" || Version != "1.0.1" {
+	if UserAgent != "pdigger-factory-sdk-go/1.1.0" || Version != "1.1.0" {
 		t.Fatal("version")
 	}
 	// a control sends a JSON body

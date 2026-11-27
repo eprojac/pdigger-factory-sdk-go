@@ -210,6 +210,7 @@ type InterpreterCore struct {
 	stepPrevT     float64
 	stepMs        int64 // the newest frame's step
 
+	trayBounds *[4]float64
 	ledger     *trayLedger
 	trays      []Tray // trays that have left, oldest first
 	traysKept  int
@@ -231,7 +232,9 @@ func NewInterpreterCore() *InterpreterCore {
 func (c *InterpreterCore) KeepTrays(n int) { c.traysKept = n }
 
 func (c *InterpreterCore) newLedger(session int64, video string) *trayLedger {
-	return newTrayLedger(&c.trayCounts, session, video, c.keepTray)
+	l := newTrayLedger(&c.trayCounts, session, video, c.keepTray)
+	l.bounds = c.trayBounds
+	return l
 }
 
 func (c *InterpreterCore) keepTray(t Tray) {
@@ -567,7 +570,7 @@ func (c *InterpreterCore) makeEvent(f *Frame, e *WorldEvent, w *WorldLayer, link
 	}
 	*c.counters.Events.ptr(e.Type)++
 	return Event{Type: e.Type, G: f.G, T: f.T, Wall: c.wall(f.Session, f.T), Session: f.Session, Video: f.Video,
-		StoneID: copyID(e.ID), Hand: e.Side, Why: e.Why, Into: e.Into, Source: e.Source, Stone: stone,
+		StoneID: copyID(e.ID), Hand: e.Side, Why: e.Why, Into: e.Into, IDs: e.IDs, Source: e.Source, Stone: stone,
 		TrayStone: trayStone}
 }
 

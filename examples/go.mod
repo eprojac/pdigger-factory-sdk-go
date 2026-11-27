@@ -2,6 +2,6 @@ module github.com/eprojac/pdigger-factory-sdk-go/examples
 
 go 1.23
 
-require github.com/eprojac/pdigger-factory-sdk-go v1.0.1
+require github.com/eprojac/pdigger-factory-sdk-go v1.1.0
 
 replace github.com/eprojac/pdigger-factory-sdk-go => ../

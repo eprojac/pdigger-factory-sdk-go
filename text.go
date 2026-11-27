@@ -125,10 +125,29 @@ func idText(id *int64) string {
 }
 
 // joinIDs joins ids as "3", "3 and 5", "3, 5 and 9".
-func joinIDs(ids []int64) string {
+func idWords(ids []int64) []string {
 	parts := make([]string, len(ids))
 	for i, id := range ids {
 		parts[i] = strconv.FormatInt(id, 10)
+	}
+	return parts
+}
+
+func joinIDs(ids []int64) string { return joinWords(idWords(ids)) }
+
+func stoneNames(parts []string) string {
+	if len(parts) <= 1 {
+		return "stone " + joinWords(parts)
+	}
+	if len(parts) > 6 {
+		return "stones " + strings.Join(parts[:6], ", ") + " and " + strconv.Itoa(len(parts)-6) + " more"
+	}
+	return "stones " + joinWords(parts)
+}
+
+func joinWords(parts []string) string {
+	if len(parts) == 0 {
+		return "?"
 	}
 	if len(parts) == 1 {
 		return parts[0]

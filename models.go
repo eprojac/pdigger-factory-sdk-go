@@ -840,17 +840,18 @@ type Solid struct {
 
 // StoneView is a stone of the world.
 type StoneView struct {
-	ID        int64       `json:"id"`
-	Mode      string      `json:"mode"`
-	Family    string      `json:"family"`
-	Shape     string      `json:"shape"`
-	Detected  bool        `json:"detected"`
-	Uncertain bool        `json:"uncertain"`
-	Side      *string     `json:"side"`
-	Outline   [][]float64 `json:"outline"`
-	Solid     *Solid      `json:"solid"`
-	Placed    *int64      `json:"placed,omitempty"`
-	Source    string      `json:"source,omitempty"`
+	ID         int64       `json:"id"`
+	Mode       string      `json:"mode"`
+	Family     string      `json:"family"`
+	Shape      string      `json:"shape"`
+	Detected   bool        `json:"detected"`
+	Uncertain  bool        `json:"uncertain"`
+	UnderSheet bool        `json:"under_sheet,omitempty"`
+	Side       *string     `json:"side"`
+	Outline    [][]float64 `json:"outline"`
+	Solid      *Solid      `json:"solid"`
+	Placed     *int64      `json:"placed,omitempty"`
+	Source     string      `json:"source,omitempty"`
 	// Look is the stone's look, sent only in the frame it was read on (the 20.20 unit sends looks since build
 	// claude-20261120-looks1); nil otherwise. See StoneLook and LookScore.
 	Look *StoneLook `json:"look,omitempty"`
@@ -911,6 +912,7 @@ type WorldEvent struct {
 	Side   string  `json:"side,omitempty"`
 	Why    string  `json:"why,omitempty"`
 	Into   []int64 `json:"into,omitempty"`
+	IDs    []int64 `json:"ids,omitempty"`
 	Source string  `json:"source,omitempty"`
 }
 
@@ -1088,6 +1090,7 @@ type LoggedEvent struct {
 	Side   string  `json:"side,omitempty"`
 	Why    string  `json:"why,omitempty"`
 	Into   []int64 `json:"into,omitempty"`
+	IDs    []int64 `json:"ids,omitempty"`
 	Source string  `json:"source,omitempty"`
 }
 

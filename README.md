@@ -6,6 +6,7 @@ Read tray reports from a pDigger Factory camera unit or replay a recording in Go
 contexts and Go iterators to follow a live unit.
 
 Simple mode gives you one report per tray. It lists the stones added, removed or moved and flags uncertain changes.
+Reports include sheet actions and the tray IDs still covered at departure when the camera sees paper.
 Advanced mode gives you the events, frames and tracking evidence behind each report.
 
 ## Install
@@ -13,7 +14,7 @@ Advanced mode gives you the events, frames and tracking evidence behind each rep
 The SDK uses the Go standard library and requires Go 1.23 or later. Add it to an existing Go module with `go get`.
 
 ```sh
-go get github.com/eprojac/pdigger-factory-sdk-go@v1.0.1
+go get github.com/eprojac/pdigger-factory-sdk-go@main
 ```
 
 For package documentation, run `go doc github.com/eprojac/pdigger-factory-sdk-go` in your module or read the

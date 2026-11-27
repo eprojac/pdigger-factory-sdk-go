@@ -19,6 +19,7 @@ type EventCounts struct {
 	Gone    int64 `json:"gone"`
 	Delete  int64 `json:"delete"`
 	Split   int64 `json:"split"`
+	Sheet   int64 `json:"sheet,omitempty"`
 	Other   int64 `json:"other"`
 }
 
@@ -46,6 +47,8 @@ func (c *EventCounts) ptr(typ string) *int64 {
 		return &c.Gone
 	case EventDelete:
 		return &c.Delete
+	case EventSheet:
+		return &c.Sheet
 	case EventSplit:
 		return &c.Split
 	}
@@ -172,14 +175,21 @@ func (s *Summary) Describe() string {
 		"), pushes ", itoa(p.Pushes))
 	parts := make([]string, 0, len(eventTypes)+1)
 	for _, t := range eventTypes {
+		if t == EventSheet && e.Sheet == 0 {
+			continue
+		}
 		parts = append(parts, t+" "+itoa(e.Count(t)))
 	}
 	parts = append(parts, EventOther+" "+itoa(e.Count(EventOther)))
 	line("events: ", strings.Join(parts, ", "))
 	tr := s.Trays
+	sheets := ""
+	if tr.Sheets != 0 || tr.UnderSheet != 0 {
+		sheets = ", sheets laid " + itoa(tr.Sheets) + ", under a sheet " + itoa(tr.UnderSheet)
+	}
 	line("trays: ", itoa(tr.Total), " (arrived ", itoa(tr.Arrived), "), stones at arrival ", itoa(tr.Stones), ", added ",
 		itoa(tr.Added), " (+", itoa(tr.AddedUnclear), " unclear), removed ", itoa(tr.Removed), " (+",
-		itoa(tr.RemovedUnclear), " unclear), not sure ", itoa(tr.Unsure))
+		itoa(tr.RemovedUnclear), " unclear), not sure ", itoa(tr.Unsure), sheets)
 	for _, h := range []struct {
 		name string
 		t    HandStateTimes

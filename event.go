@@ -1,6 +1,7 @@
 package pdiggerfactory
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -19,13 +20,14 @@ const (
 	EventGone    = "gone"
 	EventDelete  = "delete"
 	EventSplit   = "split"
+	EventSheet   = "sheet"
 	// EventOther is the summary bucket of event types this SDK version does not know.
 	EventOther = "other"
 )
 
 // eventTypes are the known event types, in the order of the summary.
 var eventTypes = [...]string{EventNew, EventConfirm, EventFreeze, EventPush, EventLift, EventHinge, EventCarry,
-	EventPlace, EventDrop, EventGone, EventDelete, EventSplit}
+	EventPlace, EventDrop, EventGone, EventDelete, EventSplit, EventSheet}
 
 // EventTypes returns the event types this SDK version knows, in the order of the summary (a new slice on every
 // call). Other types are counted as EventOther.
@@ -34,7 +36,7 @@ func EventTypes() []string { return append([]string(nil), eventTypes[:]...) }
 var deleteReasons = map[string]string{
 	"absent": "no longer seen", "overlap": "overlapped another stone", "outside": "outside the board",
 	"merged": "merged with a neighbour", "empty": "its place is empty", "hand": "a hand emptied its place",
-	"carried-away": "carried away",
+	"carried-away": "carried away", "sheet": "gone from under a sheet",
 }
 
 // Event is what the world says happened to a stone in a frame, typed.
@@ -58,6 +60,8 @@ type Event struct {
 	Why string
 	// Into are the ids of a split: the stone's own id, then the new part's.
 	Into []int64
+	// IDs names the world stones affected by a sheet action.
+	IDs []int64
 	// Source is "image" for a stone the model never boxed.
 	Source string
 	// Stone is the stone's snapshot in this frame's world, nil when it is not there.
@@ -118,6 +122,23 @@ func (e Event) Sentence() string {
 			reason = e.Why
 		}
 		return "stone " + id + " is removed (" + reason + ")"
+	case EventSheet:
+		action := "a sheet is " + e.Why
+		switch e.Why {
+		case "laid", "lifted":
+			if len(e.IDs) == 0 {
+				return action
+			}
+			prep := " over "
+			if e.Why == "lifted" {
+				prep = " off "
+			}
+			return action + prep + stoneNames(idWords(e.IDs))
+		case "":
+			return "a sheet event"
+		default:
+			return "a sheet event (" + e.Why + ")"
+		}
 	case EventSplit:
 		switch {
 		case len(e.Into) == 0:
@@ -146,6 +167,11 @@ type eventKey struct {
 }
 
 func keyOf(e *WorldEvent) eventKey {
+	if e.Type == EventSheet {
+		ids := slices.Clone(e.IDs)
+		slices.Sort(ids)
+		return eventKey{typ: e.Type, side: e.Why, into: strings.Join(idWords(slices.Compact(ids)), ",")}
+	}
 	k := eventKey{typ: e.Type, side: e.Side}
 	if e.ID != nil {
 		k.hasID, k.id = true, *e.ID

@@ -184,18 +184,21 @@ func (c TrayChange) MarshalJSON() ([]byte, error) {
 // when it is known. json.Marshal writes it with the other languages' names (session, video, tray, arrived, left, stones,
 // removed, added, moved, unclear, unsure, complete), for a database, an MES or a spreadsheet.
 type TrayReport struct {
-	Session  int64
-	Video    string
-	Tray     int64
-	Arrived  TrayPoint
-	Left     TrayPoint
-	Stones   int64
-	Removed  []TrayChange
-	Added    []TrayChange
-	Moved    []TrayChange
-	Unclear  int64
-	Unsure   int64
-	Complete bool
+	Session    int64
+	Video      string
+	Tray       int64
+	Arrived    TrayPoint
+	Left       TrayPoint
+	Stones     int64
+	Removed    []TrayChange
+	Added      []TrayChange
+	Moved      []TrayChange
+	Unclear    int64
+	Unsure     int64
+	Complete   bool
+	UnderSheet []string
+	Sheets     int64
+	SheetFacts []TrayFact
 }
 
 // Describe is "tray 1 (2026-11-22T02:38:47.0Z), 0:22.5 to 2:24.0: 11 removed, 13 added, 8 moved, not complete:
@@ -208,6 +211,9 @@ func (r TrayReport) Describe() string {
 	}
 	fmt.Fprintf(&b, ", %s to %s: %d removed, %d added, %d moved", FormatClock(r.Arrived.T), FormatClock(r.Left.T),
 		len(r.Removed), len(r.Added), len(r.Moved))
+	if len(r.UnderSheet) > 0 {
+		fmt.Fprintf(&b, ", %d under a sheet", len(r.UnderSheet))
+	}
 	if !r.Complete {
 		var parts []string
 		if r.Unclear > 0 {
@@ -223,6 +229,9 @@ func (r TrayReport) Describe() string {
 			b.WriteString("\n  " + c.Describe())
 		}
 	}
+	for _, f := range r.SheetFacts {
+		b.WriteString("\n  " + f.Describe())
+	}
 	return b.String()
 }
 
@@ -231,21 +240,41 @@ func (r TrayReport) String() string { return r.Describe() }
 
 // MarshalJSON writes the report with the other languages' names.
 func (r TrayReport) MarshalJSON() ([]byte, error) {
+	var under *[]string
+	var sheets *int64
+	var facts *[]map[string]any
+	if len(r.SheetFacts) != 0 || len(r.UnderSheet) != 0 {
+		ids := append([]string{}, r.UnderSheet...)
+		data := make([]map[string]any, 0, len(r.SheetFacts))
+		for _, f := range r.SheetFacts {
+			data = append(data, map[string]any{
+				"kind": f.Kind, "tray": f.Tray, "session": f.Session, "video": f.Video,
+				"stone": nil, "world_id": nil, "certain": nil, "why": nil, "code": f.Code,
+				"g": f.G, "t": f.T, "wall": f.Wall, "stones": f.Stones, "sure": nil, "added": nil, "removed": nil,
+				"unclear": nil, "opened": nil, "from_world": nil, "score": nil, "margin": nil, "bar": nil, "t_id": nil,
+				"open": nil, "tray_stones": f.TrayStones,
+			})
+		}
+		under, sheets, facts = &ids, &r.Sheets, &data
+	}
 	return json.Marshal(struct {
-		Session  int64        `json:"session"`
-		Video    string       `json:"video"`
-		Tray     int64        `json:"tray"`
-		Arrived  pointJSON    `json:"arrived"`
-		Left     pointJSON    `json:"left"`
-		Stones   int64        `json:"stones"`
-		Removed  []TrayChange `json:"removed"`
-		Added    []TrayChange `json:"added"`
-		Moved    []TrayChange `json:"moved"`
-		Unclear  int64        `json:"unclear"`
-		Unsure   int64        `json:"unsure"`
-		Complete bool         `json:"complete"`
+		Session    int64             `json:"session"`
+		Video      string            `json:"video"`
+		Tray       int64             `json:"tray"`
+		Arrived    pointJSON         `json:"arrived"`
+		Left       pointJSON         `json:"left"`
+		Stones     int64             `json:"stones"`
+		Removed    []TrayChange      `json:"removed"`
+		Added      []TrayChange      `json:"added"`
+		Moved      []TrayChange      `json:"moved"`
+		Unclear    int64             `json:"unclear"`
+		Unsure     int64             `json:"unsure"`
+		Complete   bool              `json:"complete"`
+		UnderSheet *[]string         `json:"under_sheet,omitempty"`
+		Sheets     *int64            `json:"sheets,omitempty"`
+		SheetFacts *[]map[string]any `json:"sheet_facts,omitempty"`
 	}{r.Session, r.Video, r.Tray, pointOf(r.Arrived), pointOf(r.Left), r.Stones, nonNil(r.Removed), nonNil(r.Added),
-		nonNil(r.Moved), r.Unclear, r.Unsure, r.Complete})
+		nonNil(r.Moved), r.Unclear, r.Unsure, r.Complete, under, sheets, facts})
 }
 
 func nonNil(c []TrayChange) []TrayChange {
@@ -285,7 +314,19 @@ func trayReport(t *Tray) *TrayReport {
 		Left:    TrayPoint{G: leaving.G, T: leaving.T, Wall: leaving.Wall},
 		Stones:  arrival.Stones, Removed: []TrayChange{}, Added: []TrayChange{}, Moved: []TrayChange{},
 		Unclear: leaving.Unclear}
+	for _, s := range t.Stones {
+		if s.Status == TrayStoneOn && s.UnderSheet {
+			r.UnderSheet = append(r.UnderSheet, s.ID)
+		}
+	}
+	sort.Strings(r.UnderSheet)
 	for _, x := range facts {
+		if x.Kind == TraySheet {
+			r.SheetFacts = append(r.SheetFacts, x)
+			if x.Code == "sheet_laid" {
+				r.Sheets++
+			}
+		}
 		s := byID[x.Stone]
 		if s == nil || (x.Kind != TrayRemoved && x.Kind != TrayAdded) {
 			continue

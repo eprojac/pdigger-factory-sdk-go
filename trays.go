@@ -83,6 +83,7 @@ const (
 	TrayIdentified = "identified"
 	TrayRemoved    = "removed"
 	TrayAdded      = "added"
+	TraySheet      = "sheet"
 	TrayLeaving    = "leaving"
 )
 
@@ -242,8 +243,10 @@ type TrayStone struct {
 	// BySpeckle says the leaving's speckle answer linked or confirmed it (section 4.6.13). Evidence, set as the tray
 	// leaves ("" while it is on), is what that answer found of it at the other moment: EvidenceFound, EvidenceNotFound
 	// or EvidenceUndecided; a report's change of the stone takes its Confidence by it.
-	BySpeckle bool
-	Evidence  string
+	BySpeckle  bool
+	Evidence   string
+	UnderSheet bool
+	SheetSince *TrayPoint
 }
 
 // TrayFact is something the interpreter says about a tray: arrived, unsure, identified, removed, added or leaving.
@@ -272,6 +275,8 @@ type TrayFact struct {
 	// Stones are the tray stones at the arrival (arrived), or on the tray (leaving); Sure, Added, Removed (its
 	// certain facts) and Unclear (its unclear facts) are counts of leaving.
 	Stones, Sure, Added, Removed, Unclear int64
+	TrayStones                            []string
+	UnderSheet                            int64
 	// Opened is where the question an unsure fact ends opened (nil when it ends none).
 	Opened *TrayPoint
 	// FromWorld (the world id the stone stood for before, nil when it was lost), Score, Margin (nil without a scored
@@ -296,9 +301,19 @@ func (f TrayFact) Describe() string {
 	switch f.Kind {
 	case TrayArrived:
 		return head + " arrived: " + itoa(f.Stones) + " stones"
+	case TraySheet:
+		action := "lifted off"
+		if f.Code == "sheet_laid" {
+			action = "laid over"
+		}
+		return head + ": a sheet was " + action + " " + stoneNames(f.TrayStones)
 	case TrayLeaving:
+		extra := ""
+		if f.UnderSheet > 0 {
+			extra = ", " + itoa(f.UnderSheet) + " under a sheet"
+		}
 		return head + " leaving: " + itoa(f.Stones) + " stones (" + itoa(f.Sure) + " sure), " + itoa(f.Added) +
-			" added, " + itoa(f.Removed) + " removed, " + itoa(f.Unclear) + " unclear"
+			" added, " + itoa(f.Removed) + " removed, " + itoa(f.Unclear) + " unclear" + extra
 	case TrayUnsure:
 		if f.Opened != nil {
 			return head + ": stone " + f.Stone + " is not sure any more (" + f.Why + "; open since " +
@@ -413,6 +428,8 @@ func (t *Tray) Check() []string { return checkTray(t) }
 // TrayCounts are the trays counts of the summary: trays opened and arrived, tray stones at the arrivals, certain and
 // unclear facts, and tray stones that stopped being sure.
 type TrayCounts struct {
+	Sheets         int64 `json:"sheets,omitempty"`
+	UnderSheet     int64 `json:"under_sheet,omitempty"`
 	Total          int64 `json:"total"`
 	Arrived        int64 `json:"arrived"`
 	Stones         int64 `json:"stones"`
@@ -562,9 +579,16 @@ func checkTray(t *Tray) []string {
 	if len(facts) > 0 && facts[len(facts)-1].Kind == TrayLeaving {
 		checkLeaving(t, facts, on, byID, bad)
 	}
+	lifted := checkSheets(t, byID, bad)
 	worlds := map[int64]bool{}
 	for _, s := range on {
-		if s.WorldID == nil || worlds[*s.WorldID] {
+		if s.WorldID == nil {
+			if s.Sure || s.UnderSheet || !lifted[s.ID] {
+				bad["C6"] = true
+			}
+			continue
+		}
+		if worlds[*s.WorldID] {
 			bad["C6"] = true
 			continue
 		}
@@ -653,7 +677,11 @@ func checkLeaving(t *Tray, facts []TrayFact, on []*TrayStone, byID map[string]*T
 		if len(c) == 0 { // the checks below read the first and last candidate; C8 has nothing to check
 			continue
 		}
-		if o.Kind == TrayUnsure && (c[0].Kind != "world" || !sameID(c[0].WorldID, o.WorldID)) {
+		firstKind := "world"
+		if o.WorldID == nil {
+			firstKind = "unseen"
+		}
+		if o.Kind == TrayUnsure && (c[0].Kind != firstKind || !sameID(c[0].WorldID, o.WorldID)) {
 			bad["C7"] = true
 		}
 		if o.Kind != TrayAdded && !slices.ContainsFunc(c, func(x TrayCandidate) bool { return x.Kind == "gone" }) {
@@ -755,7 +783,7 @@ func overlapShare(ws *StoneView, world []*StoneView) float64 {
 	reach := math.Max(d[0], d[1])
 	best := 0
 	for _, o := range world {
-		if o.ID == ws.ID {
+		if o.ID == ws.ID || o.UnderSheet {
 			continue
 		}
 		od := o.Solid.Dims
@@ -871,7 +899,7 @@ func (b trayBlink) matchesReturn(stone *StoneView) bool {
 		return false
 	}
 	for _, other := range b.priorWorld.stones {
-		if other.ID != stone.ID && other.Detected && !inHand(other) && compatible(size, sizeOf(other)) && dist(place, placeOf(other)) <= d {
+		if other.ID != stone.ID && !other.UnderSheet && other.Detected && !inHand(other) && compatible(size, sizeOf(other)) && dist(place, placeOf(other)) <= d {
 			return false
 		}
 	}
@@ -980,6 +1008,9 @@ type trayStone struct {
 	place       vec2
 	seenT       float64
 	born        TrayPoint
+	underSheet  bool
+	sheetSince  *TrayPoint
+	sheetLoss   bool
 	status      string
 	sure        bool // not given up: a stone in question keeps it (its view's Sure is false meanwhile)
 	added       bool
@@ -1068,7 +1099,7 @@ func (s *trayStone) touch(g int64) { s.touched = Int64(g) }
 func (s *trayStone) view() TrayStone {
 	v := TrayStone{ID: s.id, Status: s.status, Sure: s.sure && s.question == nil, Added: s.added, Born: s.born,
 		Place: s.place, Size: s.size, ByLook: s.byLook, LookLost: s.lookLost, Open: s.open, FirstPlace: s.firstPlace,
-		Speckle: s.speckle, BySpeckle: s.bySpeckle, Evidence: s.evidence}
+		Speckle: s.speckle, BySpeckle: s.bySpeckle, Evidence: s.evidence, UnderSheet: s.underSheet, SheetSince: s.sheetSince}
 	if s.leftPlace != nil {
 		p := [2]float64(*s.leftPlace)
 		v.LeftPlace = &p
@@ -1156,18 +1187,20 @@ type openTray struct {
 // revisions), tell it where frames it could not read came (skipped), close it when the session ends. Each tray that
 // leaves goes to onClose as its Tray.
 type trayLedger struct {
-	session int64
-	video   string
-	c       *TrayCounts
-	onClose func(Tray)
-	n       int64
-	tray    *openTray
-	stop    []*trayWorld
-	on      bool
-	calm    int
-	calmG   int64 // the first frame of the calm run
-	quiet   int
-	hole    bool // frames the rules could not read came before the next world fed (4.6.1)
+	bounds    *[4]float64
+	visitSeen map[int64]bool
+	session   int64
+	video     string
+	c         *TrayCounts
+	onClose   func(Tray)
+	n         int64
+	tray      *openTray
+	stop      []*trayWorld
+	on        bool
+	calm      int
+	calmG     int64 // the first frame of the calm run
+	quiet     int
+	hole      bool // frames the rules could not read came before the next world fed (4.6.1)
 	// lastClosed is the tray that left last: a speckle answer that comes after it left is for it (4.6.12)
 	lastClosed *openTray
 }
@@ -1221,12 +1254,15 @@ func (l *trayLedger) feed(w *WorldLayer, ref TrayPoint) []TrayFact {
 	var out []TrayFact
 	hole := l.hole
 	l.hole = false
+	tw := newTrayWorld(w, ref)
+	tw.hole = hole
+	if l.retireSheet(tw, &out) {
+		return out
+	}
 	if w.Motion != "static" {
 		l.stop, l.on = nil, false
 		return out
 	}
-	tw := newTrayWorld(w, ref)
-	tw.hole = hole
 	if l.on {
 		l.frame(tw, &out)
 		return out
@@ -1266,7 +1302,7 @@ func (l *trayLedger) fact(kind string, tr *openTray, s *trayStone, ref TrayPoint
 
 func (tw *trayWorld) observedPlace(s *trayStone) *vec2 {
 	ws := tw.byID[s.world]
-	if !s.linked || s.status != TrayStoneOn || ws == nil || !ws.Detected || inHand(ws) {
+	if !s.linked || s.status != TrayStoneOn || ws == nil || ws.UnderSheet || !ws.Detected || inHand(ws) {
 		return nil
 	}
 	p := placeOf(ws)
@@ -1305,10 +1341,11 @@ func lookClearer(typ string) bool {
 }
 
 func (l *trayLedger) begin(out *[]TrayFact) {
+	l.visitSeen = make(map[int64]bool)
 	ids := map[int64]struct{}{}
 	unheld := map[int64]struct{}{}
 	for _, s := range l.stop[0].stones {
-		if inHand(s) {
+		if s.UnderSheet || inHand(s) {
 			continue
 		}
 		unheld[s.ID] = struct{}{}
@@ -1380,8 +1417,8 @@ func (tr *openTray) incompleteInventory(tw *trayWorld) bool {
 			delete(tr.missing, id)
 		}
 	}
-	for id := range tr.last.byID {
-		if tw.byID[id] == nil {
+	for id, prev := range tr.last.byID {
+		if tw.byID[id] == nil && !prev.UnderSheet {
 			if tr.missing == nil {
 				tr.missing = make(map[int64]int64)
 			}
@@ -1396,7 +1433,7 @@ func (tr *openTray) incompleteInventory(tw *trayWorld) bool {
 func gainedBlinkNeighbour(anchor *StoneView, previous, current *trayWorld) bool {
 	size, place := sizeOf(anchor), placeOf(anchor)
 	near := func(s *StoneView) bool {
-		return s != nil && s.Detected && !inHand(s) && compatible(sizeOf(s), size) && dist(placeOf(s), place) <= renameD
+		return s != nil && !s.UnderSheet && s.Detected && !inHand(s) && compatible(sizeOf(s), size) && dist(placeOf(s), place) <= renameD
 	}
 	for _, s := range current.stones {
 		if s.ID != anchor.ID && near(s) && !near(previous.byID[s.ID]) {
@@ -1438,7 +1475,7 @@ func (tr *openTray) resolveBlinks(tw *trayWorld) bool {
 	if canMiss && tr.last.quietHands {
 		for id, ws := range tr.last.byID {
 			u := tr.unid[id]
-			if tw.byID[id] != nil || !ws.Detected || inHand(ws) || (tr.link[id] == nil && u == nil) ||
+			if tw.byID[id] != nil || ws.UnderSheet || !ws.Detected || inHand(ws) || (tr.link[id] == nil && u == nil) ||
 				gainedBlinkNeighbour(ws, tr.last, tw) {
 				continue
 			}
@@ -1463,8 +1500,13 @@ func (l *trayLedger) frame(tw *trayWorld, out *[]TrayFact) {
 	tr, w, ref := l.tray, tw.w, tw.ref
 	defer tr.observeBoundary(tr.last, tw)
 	t := ref.T
-	for id := range tw.byID {
-		tr.ids[id] = struct{}{}
+	for _, ws := range tw.stones {
+		if !ws.UnderSheet {
+			tr.ids[ws.ID] = struct{}{}
+			if ws.Detected {
+				l.visitSeen[ws.ID] = true
+			}
+		}
 	}
 	storeLooks(tr, tw)
 	hand, change, isNew, took, pushed := false, false, false, false, false
@@ -1475,6 +1517,9 @@ func (l *trayLedger) frame(tw *trayWorld, out *[]TrayFact) {
 		isNew = isNew || e.Type == EventNew
 		took = took || (e.Type == EventDelete && (e.Why == "hand" || e.Why == "carried-away"))
 		pushed = pushed || e.Type == EventPush
+	}
+	if change && l.onlyBackgroundRetired(tr, tw) {
+		change = false
 	}
 	if isNew {
 		l.quiet = 0
@@ -1522,12 +1567,14 @@ func (l *trayLedger) frame(tw *trayWorld, out *[]TrayFact) {
 				}
 			}
 			l.arrive(tr, tw, out)
+			l.sheetLaid(tr, tr.stones, ref, out)
 			tr.arrivalLinks = l.links() // the links as it arrived, for the speckle answers (4.6.12)
 			tr.idsAtArrival = maps.Clone(tr.ids)
 			l.lookWork(tr, tw, ref, out)
 		}
 		return
 	}
+	l.observeSheets(tr, tw, !incomplete && l.calm >= trayCalm, out)
 	// 1. where hands worked
 	for i := range w.Events {
 		e := &w.Events[i]
@@ -1602,7 +1649,7 @@ func (l *trayLedger) frame(tw *trayWorld, out *[]TrayFact) {
 	// a busy frame or a push frame spoils the unseen run of a linked stone not detected on it (4.6.1)
 	if (tr.hasBusy && tr.busyT == t) || (tr.hasPush && tr.pushT == t) {
 		for _, id := range sortedKeys(tr.link) {
-			if ws := tw.byID[id]; ws != nil && !ws.Detected {
+			if ws := tw.byID[id]; !tr.link[id].underSheet && ws != nil && !ws.Detected {
 				for _, rec := range tr.link[id].watches() {
 					if rec != nil && t > rec.seenT {
 						rec.spoilt = true
@@ -1614,6 +1661,9 @@ func (l *trayLedger) frame(tw *trayWorld, out *[]TrayFact) {
 	// 4. linked stones in this frame's world
 	for _, id := range sortedKeys(tr.link) {
 		s, ws := tr.link[id], tw.byID[id]
+		if s.underSheet {
+			continue
+		}
 		if ws == nil {
 			if _, pending := tr.blinks[id]; !pending {
 				delete(tr.link, id)
@@ -1651,7 +1701,7 @@ func (l *trayLedger) frame(tw *trayWorld, out *[]TrayFact) {
 	}
 	// 5. world stones no tray stone stands for
 	for _, ws := range tw.stones {
-		if tr.link[ws.ID] != nil || tr.unid[ws.ID] != nil || inHand(ws) {
+		if tr.link[ws.ID] != nil || tr.unid[ws.ID] != nil || inHand(ws) || ws.UnderSheet {
 			continue
 		}
 		if insideBoard(tr.board, placeOf(ws)) {
@@ -1660,7 +1710,7 @@ func (l *trayLedger) frame(tw *trayWorld, out *[]TrayFact) {
 	}
 	for _, id := range sortedKeys(tr.unid) {
 		ws := tw.byID[id]
-		if ws == nil {
+		if ws == nil || ws.UnderSheet {
 			delete(tr.unid, id)
 			continue
 		}
@@ -1719,10 +1769,11 @@ func (l *trayLedger) arrive(tr *openTray, tw *trayWorld, out *[]TrayFact) {
 	}
 	st := trayStamp(ref.Wall, ref.T, l.session)
 	for _, ws := range tw.stones {
-		if inHand(ws) || !insideBoard(tr.board, placeOf(ws)) {
+		if inHand(ws) || (ws.UnderSheet && !l.visitSeen[ws.ID]) || !insideBoard(tr.board, placeOf(ws)) {
 			continue
 		}
 		s := newTrayStone(tr, st+"-"+itoa(tr.n)+"-"+itoa(ws.ID), ws, ref)
+		s.underSheet = ws.UnderSheet
 		s.calmPlace = tw.observedPlace(s)
 		tr.stones = append(tr.stones, s)
 		tr.link[ws.ID] = s
@@ -1792,6 +1843,7 @@ func snapshot(tr *openTray, ref TrayPoint) {
 }
 
 func lose(tr *openTray, s *trayStone, ref TrayPoint) {
+	s.underSheet, s.sheetSince, s.sheetLoss = false, nil, false
 	s.run1 = nil // a lost stone's unseen run ends (4.6.1): never spoilt while unlinked; on probation, it fails
 	s.linked, s.status, s.lostT, s.lostK = false, TrayStoneLost, ref.T, tr.k
 	s.lostG, s.lostByLook = ref.G, false
@@ -1903,7 +1955,7 @@ func unread(tr *openTray, t float64) {
 // seen before its unseen run: a sight there can not tell the two apart.
 func crowded(s *trayStone, w *trayWatch, tw *trayWorld) bool {
 	for _, ws := range tw.stones {
-		if ws.ID != w.wid && !inHand(ws) && compatible(sizeOf(ws), s.size) && dist(placeOf(ws), w.place) <= nearD {
+		if ws.ID != w.wid && !ws.UnderSheet && !inHand(ws) && compatible(sizeOf(ws), s.size) && dist(placeOf(ws), w.place) <= nearD {
 			return true
 		}
 	}
@@ -2022,6 +2074,7 @@ func (l *trayLedger) relink(tr *openTray, s *trayStone, id int64, tw *trayWorld,
 	ref TrayPoint, out *[]TrayFact) {
 	u := tr.unid[id]
 	delete(tr.unid, id)
+	s.sheetLoss = false
 	s.linked, s.world, s.status = true, id, TrayStoneOn
 	s.touch(ref.G)
 	s.worldT = u.born.T
@@ -2110,7 +2163,7 @@ func (l *trayLedger) settle(tr *openTray, tw *trayWorld, ref TrayPoint, final bo
 	t, k := ref.T, tr.k
 	var world []*StoneView
 	for _, ws := range tw.stones {
-		if !inHand(ws) {
+		if !ws.UnderSheet && !inHand(ws) {
 			world = append(world, ws)
 		}
 	}
@@ -2138,7 +2191,7 @@ func (l *trayLedger) settle(tr *openTray, tw *trayWorld, ref TrayPoint, final bo
 		}
 	}
 	for _, s := range tr.stones {
-		if s.status != TrayStoneOn || !s.sure || s.atK != k || paired[s] {
+		if s.underSheet || s.status != TrayStoneOn || !s.sure || s.atK != k || paired[s] {
 			continue
 		}
 		var ws *StoneView
@@ -2227,7 +2280,7 @@ func (l *trayLedger) settle(tr *openTray, tw *trayWorld, ref TrayPoint, final bo
 		if tr.relinked {
 			break
 		}
-		if s.status != TrayStoneLost || (s.lostK >= k && t-s.lostT < renameT) {
+		if s.status != TrayStoneLost || s.sheetLoss || (s.lostK >= k && t-s.lostT < renameT) {
 			continue
 		}
 		empty := true
@@ -2346,6 +2399,13 @@ func (l *trayLedger) leave(tr *openTray, tw *trayWorld, ref TrayPoint, out *[]Tr
 	}
 	for _, s := range tr.stones {
 		if s.status == TrayStoneLost {
+			if s.sheetLoss {
+				s.status = TrayStoneOn
+				if s.sure {
+					l.unsure(tr, s, "its track ended when the paper lifted", "unseen", ref, out)
+				}
+				continue
+			}
 			s.status, s.certain, s.leftNow = TrayStoneRemoved, Bool(false), true
 			tr.unclear++
 			l.c.RemovedUnclear++
@@ -2356,7 +2416,7 @@ func (l *trayLedger) leave(tr *openTray, tw *trayWorld, ref TrayPoint, out *[]Tr
 	var unheld []*StoneView // the leaving point's world stones not held: those that can hide a kept stone
 	if tr.leaveWorld != nil {
 		for _, o := range tr.leaveWorld.stones {
-			if !inHand(o) {
+			if !o.UnderSheet && !inHand(o) {
 				unheld = append(unheld, o)
 			}
 		}
@@ -2425,7 +2485,7 @@ func storeLooks(tr *openTray, tw *trayWorld) {
 		}
 	}
 	for _, ws := range tw.stones {
-		if inHand(ws) || !insideBoard(tr.board, placeOf(ws)) {
+		if ws.UnderSheet || inHand(ws) || !insideBoard(tr.board, placeOf(ws)) {
 			continue
 		}
 		if c := usableLook(ws.Look); c != nil {
@@ -2439,7 +2499,7 @@ func storeLooks(tr *openTray, tw *trayWorld) {
 // was read, and no hand mark after the look lies within handR of that place.
 func fresh(tr *openTray, e *trayLook, tw *trayWorld) bool {
 	ws := tw.byID[e.wid]
-	if ws == nil || inHand(ws) || dist(placeOf(ws), e.place) > nearD {
+	if ws == nil || ws.UnderSheet || inHand(ws) || dist(placeOf(ws), e.place) > nearD {
 		return false
 	}
 	for i := len(tr.marks) - 1; i >= 0; i-- {
@@ -2578,7 +2638,7 @@ func (l *trayLedger) takeLooks(tr *openTray, tw *trayWorld, ref TrayPoint, out *
 
 func anchors(tr *openTray, tw *trayWorld) {
 	for _, s := range tr.stones {
-		if s.status != TrayStoneOn || len(s.chain) > 0 || !s.linked {
+		if s.underSheet || s.status != TrayStoneOn || len(s.chain) > 0 || !s.linked {
 			continue
 		}
 		e := tr.store[s.world]
@@ -2630,7 +2690,7 @@ func lookRunOf(tr *openTray, tw *trayWorld) *lookRun {
 	}
 	var rows []row
 	for _, s := range tr.stones {
-		if len(s.chain) == 0 || !s.sure {
+		if s.underSheet || len(s.chain) == 0 || !s.sure {
 			continue
 		}
 		q := s.question
@@ -2647,7 +2707,7 @@ func lookRunOf(tr *openTray, tw *trayWorld) *lookRun {
 	}
 	var cols []*StoneView
 	for _, ws := range tw.stones {
-		if inHand(ws) || !insideBoard(tr.board, placeOf(ws)) {
+		if ws.UnderSheet || inHand(ws) || !insideBoard(tr.board, placeOf(ws)) {
 			continue
 		}
 		e := store[ws.ID]
@@ -2832,6 +2892,7 @@ func (l *trayLedger) apply(tr *openTray, best *lookBest, tw *trayWorld, ref Tray
 	u := tr.unid[id]
 	delete(tr.unid, id)
 	ws := tw.byID[id]
+	s.sheetLoss = false
 	s.linked, s.world, s.status = true, id, TrayStoneOn
 	s.touch(ref.G)
 	if u != nil {
@@ -2878,7 +2939,7 @@ func (l *trayLedger) openAccount(tr *openTray, tw *trayWorld) []TrayOpen {
 	}
 	var free []*StoneView
 	for _, ws := range tw.stones {
-		if !inHand(ws) && insideBoard(tr.board, placeOf(ws)) && !sureWorld[ws.ID] {
+		if !ws.UnderSheet && !inHand(ws) && insideBoard(tr.board, placeOf(ws)) && !sureWorld[ws.ID] {
 			free = append(free, ws)
 		}
 	}
@@ -2935,7 +2996,7 @@ func openStone(tr *openTray, s *trayStone, kind string, run *lookRun, rows map[i
 	i := s.index
 	covered := false
 	for _, ws := range tw.stones {
-		covered = covered || (!inHand(ws) && covers(ws, s.place, emptyMargin))
+		covered = covered || (!ws.UnderSheet && !inHand(ws) && covers(ws, s.place, emptyMargin))
 	}
 	var cause string
 	switch {
@@ -2984,7 +3045,9 @@ func openStone(tr *openTray, s *trayStone, kind string, run *lookRun, rows map[i
 		scores[p.key] = p
 	}
 	var cands []TrayCandidate
-	if s.status == TrayStoneOn {
+	if s.status == TrayStoneOn && !s.linked {
+		cands = append(cands, TrayCandidate{Kind: "unseen"})
+	} else if s.status == TrayStoneOn {
 		p, ok := scores[s.world]
 		cands = append(cands, TrayCandidate{Kind: "world", WorldID: Int64(s.world), Stone: s.id, Score: scoreOf(p, ok)})
 	}
@@ -3116,7 +3179,9 @@ func openAdded(tr *openTray, s *trayStone, run *lookRun) TrayOpen {
 }
 
 // closeTray makes the open tray leave: its final account (section 4.6.7), then it goes to onClose.
-func (l *trayLedger) closeTray(out *[]TrayFact) {
+func (l *trayLedger) closeTray(out *[]TrayFact) { l.closeAt(out, nil, nil) }
+
+func (l *trayLedger) closeAt(out *[]TrayFact, boundary *TrayPoint, lifted []*trayStone) {
 	tr := l.tray
 	if tr == nil {
 		return
@@ -3141,6 +3206,9 @@ func (l *trayLedger) closeTray(out *[]TrayFact) {
 		leaveWorld = tr.calmWorld
 	}
 	tr.leaving = &leave
+	if boundary != nil {
+		tr.leaving = boundary
+	}
 	before := make(map[*trayStone]int64, len(tr.link))
 	for id, s := range tr.link {
 		before[s] = id
@@ -3162,7 +3230,8 @@ func (l *trayLedger) closeTray(out *[]TrayFact) {
 	maps.DeleteFunc(tr.unid, func(id int64, u *trayUnid) bool { return tw.byID[id] == nil || u.born.G > leave.G })
 	tr.leaveWorld = leaveWorld
 	l.settle(tr, tw, leave, true, out)
-	var on, sure, removed int64
+	var on, sure, removed, under int64
+	var covered []*trayStone
 	for _, s := range tr.stones {
 		if s.status == TrayStoneOn {
 			// The final settle can add a stone or change its world ID. Read that ID at the
@@ -3171,6 +3240,10 @@ func (l *trayLedger) closeTray(out *[]TrayFact) {
 				s.leftPlace = leaveWorld.observedPlace(s)
 			}
 			on++
+			if s.underSheet {
+				under++
+				covered = append(covered, s)
+			}
 			if s.sure {
 				sure++
 			}
@@ -3184,7 +3257,10 @@ func (l *trayLedger) closeTray(out *[]TrayFact) {
 	if tr.took {
 		tid = Int64(tidOf(tr))
 	}
-	l.fact(TrayLeaving, tr, nil, leave, TrayFact{Stones: on, Sure: sure, Added: tr.added, Removed: removed,
+	l.c.UnderSheet += under
+	l.sheetLaid(tr, covered, *tr.leaving, out)
+	l.sheetFact(tr, lifted, "sheet_lifted", *tr.leaving, out)
+	l.fact(TrayLeaving, tr, nil, *tr.leaving, TrayFact{UnderSheet: under, Stones: on, Sure: sure, Added: tr.added, Removed: removed,
 		Unclear: tr.unclear, Open: append([]TrayOpen{}, tr.open...), TID: tid}, out)
 	l.lastClosed = tr
 	l.onClose(l.view(tr))

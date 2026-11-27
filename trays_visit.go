@@ -65,7 +65,7 @@ func (l *trayLedger) rememberUnseen(tr *openTray, tw *trayWorld, out *[]TrayFact
 	}
 	for _, s := range tr.stones {
 		ws := tw.byID[s.world]
-		if s.linked && s.status == TrayStoneOn && s.sure && ws != nil && !ws.Detected {
+		if s.linked && s.status == TrayStoneOn && !s.underSheet && s.sure && ws != nil && !ws.Detected {
 			if p, ok := v.unseen[s]; ok && p.id == s.world && p.epoch != v.epoch {
 				l.doubt(tr, s, "not seen at two calm moments", "unseen", tw.ref, tw.ref.G, out)
 			}
