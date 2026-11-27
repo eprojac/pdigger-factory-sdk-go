@@ -457,7 +457,7 @@ func stoneEvidence(tr *openTray, s *trayStone) string {
 	if !s.added {
 		return speckleEvidence(tr.leavingSpeckle, true, s.firstWorld)
 	}
-	if s.status != TrayStoneOn {
+	if s.status != TrayStoneOn || !s.linked {
 		return EvidenceUndecided
 	}
 	return speckleEvidence(tr.leavingSpeckle, false, s.world)

@@ -80,6 +80,22 @@ func TestSheetReportsAndChecks(t *testing.T) {
 	}
 }
 
+func TestUnresolvedSheetStoneDoesNotOwnItsFormerWorldID(t *testing.T) {
+	current := &trayStone{id: "current", status: TrayStoneOn, world: 8, linked: true, size: vec2{1, 1}}
+	unresolved := &trayStone{id: "unresolved", status: TrayStoneOn, world: 8, index: 1, size: vec2{1, 1}}
+	tr := &openTray{stones: []*trayStone{current, unresolved}, lastRun: &lookRun{}}
+	visible := &StoneView{ID: 8, Mode: "seen", Detected: true, Solid: &Solid{
+		Pos: []float64{0, 0, 0}, Dims: []float64{1, 1, 1}, Q: []float64{0, 0, 0, 1},
+	}}
+	tw := &trayWorld{stones: []*StoneView{visible}}
+	entries := (&trayLedger{}).openAccount(tr, tw)
+	got := entries[1]
+	if got.WorldID != nil || len(got.Candidates) < 2 || got.Candidates[0].Kind != "unseen" ||
+		got.Candidates[1].Stone != current.id {
+		t.Fatalf("unresolved stone's candidates: %+v", got)
+	}
+}
+
 func TestTraySheetBounds(t *testing.T) {
 	c := NewInterpreterCore()
 	bounds := [4]float64{0, 0, 100, 100}

@@ -2930,7 +2930,7 @@ func (l *trayLedger) openAccount(tr *openTray, tw *trayWorld) []TrayOpen {
 	sureWorld := map[int64]bool{}
 	stoneOn := map[int64]string{}
 	for _, s := range tr.stones {
-		if s.status == TrayStoneOn {
+		if s.status == TrayStoneOn && s.linked {
 			stoneOn[s.world] = s.id
 			if s.sure {
 				sureWorld[s.world] = true

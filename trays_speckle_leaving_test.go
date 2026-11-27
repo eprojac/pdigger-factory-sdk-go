@@ -405,7 +405,8 @@ func TestTheEvidenceOfAStone(t *testing.T) {
 	}{
 		{trayStone{firstWorld: 3, world: 11, status: TrayStoneOn}, EvidenceNotFound}, // arrived as 3, now on 11
 		{trayStone{firstWorld: 1, status: TrayStoneRemoved}, EvidenceFound},          // removed, found as the tray left
-		{trayStone{firstWorld: 12, world: 11, status: TrayStoneOn, added: true}, EvidenceFound},
+		{trayStone{firstWorld: 12, world: 11, status: TrayStoneOn, added: true, linked: true}, EvidenceFound},
+		{trayStone{firstWorld: 12, world: 11, status: TrayStoneOn, added: true}, EvidenceUndecided},
 		{trayStone{firstWorld: 12, world: 12, status: TrayStoneRemoved, added: true}, EvidenceUndecided},
 		{trayStone{firstWorld: 12, world: 12, status: TrayStoneLost, added: true}, EvidenceUndecided},
 	} {
